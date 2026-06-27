@@ -804,10 +804,8 @@ with tab3:
             # Info insight — user input manual di sidebar
             st.markdown(f"""
             <div style='background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;
-                        padding:0.65rem 1rem;margin-top:0.5rem;font-size:0.82rem;color:#14532d;
-                        display:flex;align-items:center;gap:0.5rem;'>
-                💡 Kebutuhan kalori harianmu sekitar <b>{kebutuhan:.0f} kkal</b>.
-                Masukkan angka ini secara manual ke <b>Target Kalori Harian</b> di sidebar kiri.
+                        padding:0.75rem 1rem;margin-top:0.5rem;font-size:0.83rem;color:#14532d;line-height:1.6;'>
+                💡 Kebutuhan kalori harianmu sekitar <b>{kebutuhan:.0f} kkal</b>. Masukkan angka ini secara manual ke kolom <b>🎯 Target Kalori Harian</b> di sidebar kiri.
             </div>
             """, unsafe_allow_html=True)
         else:
