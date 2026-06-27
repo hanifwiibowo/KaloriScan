@@ -344,12 +344,12 @@ with st.sidebar:
     target_kal = st.number_input(
         "kkal/hari",
         min_value=1000, max_value=5000,
-        value=st.session_state.get("target_kal", 2000),
         step=50,
         label_visibility="collapsed",
         key="target_kal_input"
     )
-    st.session_state["target_kal"] = target_kal
+    st.session_state["target_kal"] = st.session_state["target_kal_input"]
+    target_kal = st.session_state["target_kal"]
     st.markdown("""
     <div style='background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:0.55rem 0.75rem;margin-top:0.4rem;font-size:0.74rem;color:#92400e;line-height:1.5;'>
         💡 Belum tahu target kalorimu?<br>
@@ -390,7 +390,7 @@ if demo_mode:
     """, unsafe_allow_html=True)
 
 # ── Session state ─────────────────────────────────────────────
-for key, val in [("history",[]),("result",None),("current_upload_id",None),("input_mode","upload"),("target_kal",2000)]:
+for key, val in [("history",[]),("result",None),("current_upload_id",None),("input_mode","upload"),("target_kal",2000),("target_kal_input",2000)]:
     if key not in st.session_state:
         st.session_state[key] = val
 
