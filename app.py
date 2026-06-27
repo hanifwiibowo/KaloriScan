@@ -341,7 +341,14 @@ with st.sidebar:
     # Target kalori di sidebar
     st.markdown("---")
     st.markdown("<div style='font-size:0.8rem;font-weight:700;color:#374151;margin-bottom:0.5rem;'>🎯 Target Kalori Harian</div>", unsafe_allow_html=True)
-    target_kal = st.number_input("kkal/hari", min_value=1000, max_value=5000, value=2000, step=50, label_visibility="collapsed")
+    target_kal = st.number_input(
+        "kkal/hari",
+        min_value=1000, max_value=5000,
+        value=st.session_state.get("target_kal", 2000),
+        step=50,
+        label_visibility="collapsed",
+        key="target_kal_input"
+    )
     st.session_state["target_kal"] = target_kal
     st.markdown("""
     <div style='background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:0.55rem 0.75rem;margin-top:0.4rem;font-size:0.74rem;color:#92400e;line-height:1.5;'>
@@ -353,10 +360,10 @@ with st.sidebar:
     # Footer note pojok kiri bawah sidebar
     st.markdown("---")
     st.markdown("""
-    <div style='font-size:0.69rem; color:#9ca3af; line-height:1.6;'>
+    <div style='font-size:0.72rem; color:#374151; line-height:1.6;'>
         Data nutrisi mengacu pada<br>
-        <b style='color:#6b7280;'>TKPI — Kemenkes RI</b><br>
-        Nilai kalori bersifat <i>estimasi</i>
+        <b style='color:#111827;'>TKPI — Kemenkes RI</b><br>
+        Nilai kalori bersifat <i style="color:#374151;">estimasi</i>
     </div>
     """, unsafe_allow_html=True)
 
@@ -537,7 +544,9 @@ with tab1:
                     hole=0.65,
                     marker_colors=["#3b82f6","#16a34a","#f59e0b"],
                     textinfo="label+percent",
-                    textfont_size=12,
+                    textfont=dict(size=12, color="#1f2937"),
+                    outsidetextfont=dict(size=12, color="#1f2937"),
+                    insidetextfont=dict(size=12, color="#ffffff"),
                     hovertemplate="<b>%{label}</b><br>%{value} kkal<br>%{percent}<extra></extra>",
                 ))
                 fig_donut.add_annotation(text=f"<b>{nutrition['kalori']}</b><br>kkal", x=0.5, y=0.5,
@@ -778,7 +787,9 @@ with tab3:
             # Tombol set sebagai target
             if st.button(f"🎯 Pakai {kebutuhan:.0f} kkal sebagai target harian", use_container_width=True):
                 st.session_state["target_kal"] = int(kebutuhan)
-                st.success(f"Target kalori diset ke {kebutuhan:.0f} kkal/hari!")
+                st.session_state["target_kal_input"] = int(kebutuhan)
+                st.success(f"✅ Target kalori diset ke {kebutuhan:.0f} kkal/hari! Sidebar kiri sudah diperbarui.")
+                st.rerun()
         else:
             st.markdown("""
             <div class='ks-empty'>
