@@ -5,15 +5,15 @@ import os
 import time
 from PIL import Image
 
-# ── Page config ────────────────────────────────────────────
+# ── Page config ─────────────────────────────────────────────
 st.set_page_config(
-    page_title="UKM - Ukur Kalori Makanan",
-    page_icon="🍽️",
+    page_title="KaloriScan — Klasifikasi Makanan & Estimasi Kalori",
+    page_icon="🥗",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ── Load TensorFlow (lazy, agar tidak crash saat belum ada model) ──
+# ── Load TensorFlow ─────────────────────────────────────────
 PRIORITY_MODELS = ["SimpleCNN", "MobileNetV2", "EfficientNetB0"]
 
 @st.cache_resource
@@ -33,12 +33,28 @@ def load_models():
     except Exception:
         return {}, None
 
-# ── Konfigurasi kelas & nutrisi ────────────────────────────
+# ── Konfigurasi kelas & nutrisi ─────────────────────────────
 CLASS_NAMES = [
     "ayam_goreng", "burger", "french_fries", "gado_gado",
     "ikan_goreng", "mie_goreng", "nasi_goreng", "nasi_padang",
     "pizza", "rawon", "rendang", "sate", "soto_ayam"
 ]
+
+FOOD_EMOJI = {
+    "ayam_goreng" : "🍗",
+    "burger"      : "🍔",
+    "french_fries": "🍟",
+    "gado_gado"   : "🥗",
+    "ikan_goreng" : "🐟",
+    "mie_goreng"  : "🍜",
+    "nasi_goreng" : "🍳",
+    "nasi_padang" : "🍛",
+    "pizza"       : "🍕",
+    "rawon"       : "🥣",
+    "rendang"     : "🥩",
+    "sate"        : "🍢",
+    "soto_ayam"   : "🍲",
+}
 
 DISPLAY_NAMES = {
     "ayam_goreng" : "Ayam Goreng",
@@ -56,7 +72,6 @@ DISPLAY_NAMES = {
     "soto_ayam"   : "Soto Ayam",
 }
 
-# Range nutrisi min/max per makanan (dari nutrisi_makanan_indonesia.xlsx + TKPI)
 CALORIE_DB = {
     "ayam_goreng" : {"porsi_g": 100, "karbo": [0,   5],  "protein": [22, 28], "lemak": [12, 18]},
     "burger"      : {"porsi_g": 150, "karbo": [25,  35], "protein": [12, 18], "lemak": [10, 15]},
@@ -75,7 +90,7 @@ CALORIE_DB = {
 
 IMG_SIZE = {"SimpleCNN": (128, 128), "MobileNetV2": (128, 128), "EfficientNetB0": (224, 224)}
 
-# ── Helper functions ────────────────────────────────────────
+# ── Helper functions ─────────────────────────────────────────
 def estimate_nutrition(food_class):
     data = CALORIE_DB.get(food_class)
     if not data:
@@ -104,176 +119,424 @@ def predict(model, img_array):
 
 def confidence_badge(conf):
     if conf >= 0.75:
-        return "Yakin", "#7ed957"
+        return "Yakin ✓", "#16a34a", "#dcfce7"
     elif conf >= 0.5:
-        return "Cukup yakin", "#ffc857"
+        return "Cukup Yakin", "#d97706", "#fef3c7"
     else:
-        return "Kurang yakin", "#ff8c5a"
+        return "Kurang Yakin", "#dc2626", "#fee2e2"
 
-# ── Custom CSS ──────────────────────────────────────────────
+# ── Custom CSS ───────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-html, body, [class*="css"] { font-family: 'Plus Jakarta Sans', sans-serif; }
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
+}
 
-/* Sidebar */
+/* ─── Sidebar ─── */
 [data-testid="stSidebar"] {
-    background: linear-gradient(160deg, #1a120d, #241a14, #2e1d15);
+    background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%);
+    border-right: 1px solid #d1fae5;
 }
-[data-testid="stSidebar"] * { color: #f0ddd0 !important; }
+[data-testid="stSidebar"] * { color: #1a3a2a !important; }
+[data-testid="stSidebar"] .stMarkdown h3 { color: #15803d !important; }
 
-/* Hero banner */
-.hero {
-    background: linear-gradient(135deg, #2a1810 0%, #3d2015 50%, #1f1209 100%);
+/* ─── Main background ─── */
+.stApp {
+    background: linear-gradient(135deg, #f0fdf4 0%, #fefce8 50%, #f0fdf4 100%);
+}
+
+/* ─── Hide default Streamlit header ─── */
+header[data-testid="stHeader"] { background: transparent; }
+
+/* ─── Hero banner ─── */
+.ks-hero {
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 40%, #166534 100%);
+    border-radius: 24px;
+    padding: 2.2rem 2.8rem;
+    margin-bottom: 1.6rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(22,163,74,0.25);
+}
+.ks-hero::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.07);
+}
+.ks-hero::after {
+    content: '';
+    position: absolute;
+    bottom: -40px; left: 30%;
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    background: rgba(253,224,71,0.12);
+}
+.ks-hero-logo {
+    font-size: 2.2rem;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+}
+.ks-hero h1 {
+    font-size: 2.4rem;
+    font-weight: 900;
+    color: #ffffff;
+    margin: 0 0 0.2rem 0;
+    letter-spacing: -1px;
+}
+.ks-hero h1 span {
+    color: #fde047;
+}
+.ks-hero-sub {
+    color: #bbf7d0;
+    font-size: 1rem;
+    font-weight: 500;
+    margin: 0;
+}
+.ks-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(253,224,71,0.2);
+    border: 1px solid rgba(253,224,71,0.4);
     border-radius: 20px;
-    padding: 2.4rem 2.8rem;
-    margin-bottom: 1.5rem;
-    border: 1px solid rgba(255,255,255,0.06);
+    padding: 4px 14px;
+    font-size: 0.75rem;
+    color: #fde047;
+    font-weight: 600;
+    margin-bottom: 0.9rem;
 }
-.hero h1 {
-    font-size: 2.5rem; font-weight: 800;
-    background: linear-gradient(90deg, #ff9466, #ffcf94, #ff9466);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    margin: 0; letter-spacing: -0.5px;
-}
-.hero .hero-sub { color: #ffb088; font-size: 1.05rem; font-weight: 700; margin: 0.35rem 0 0; }
-.hero .hero-desc { color: #c9a695; font-size: 0.92rem; margin: 0.4rem 0 0; }
 
-/* Upload area */
+/* ─── Demo/mode notice ─── */
+.ks-notice {
+    background: #fefce8;
+    border: 1px solid #fde68a;
+    border-left: 4px solid #f59e0b;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-size: 0.82rem;
+    color: #92400e;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* ─── Upload zone ─── */
 [data-testid="stFileUploader"] {
-    border: 2px dashed #ff7a47 !important;
-    border-radius: 16px !important;
-    background: rgba(255, 122, 71, 0.06) !important;
-    padding: 1rem !important;
+    border: 2px dashed #86efac !important;
+    border-radius: 18px !important;
+    background: rgba(240,253,244,0.8) !important;
+}
+[data-testid="stFileUploader"]:hover {
+    border-color: #16a34a !important;
+    background: rgba(220,252,231,0.9) !important;
 }
 
-/* Result card */
-.result-card {
-    background: linear-gradient(135deg, #2e1d15, #1c120c);
-    border: 1px solid rgba(255, 148, 102, 0.25);
-    border-radius: 16px;
-    padding: 1.4rem 1.6rem;
+/* ─── Section label ─── */
+.ks-section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #6b7280;
+    margin-bottom: 0.6rem;
+}
+
+/* ─── Result card ─── */
+.ks-result-card {
+    background: #ffffff;
+    border: 1px solid #d1fae5;
+    border-radius: 20px;
+    padding: 1.5rem 1.6rem;
+    box-shadow: 0 4px 20px rgba(22,163,74,0.08);
     margin-bottom: 1rem;
 }
-.confidence-badge {
+.ks-result-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.6rem;
+}
+.ks-conf-badge {
     display: inline-block;
-    border-radius: 8px;
-    padding: 3px 10px;
-    font-size: 0.74rem;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.72rem;
     font-weight: 700;
-    border: 1px solid;
 }
-.food-name {
-    font-size: 1.9rem; font-weight: 800;
-    color: #ffcf94; margin: 0.5rem 0 0; letter-spacing: -0.3px;
+.ks-food-emoji { font-size: 2.8rem; line-height: 1; margin-bottom: 0.3rem; display: block; }
+.ks-food-name {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #14532d;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
 }
+.ks-food-sub { font-size: 0.82rem; color: #6b7280; margin-top: 4px; }
 
-/* Kalori badge */
-.kalori-badge {
-    background: linear-gradient(135deg, #ff7a47, #ffb088);
-    color: #241208;
-    border-radius: 12px;
-    padding: 1rem 1.5rem;
-    text-align: center;
+/* ─── Calorie card ─── */
+.ks-calorie-card {
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+    border-radius: 18px;
+    padding: 1.4rem 1.6rem;
     margin: 1rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 6px 24px rgba(22,163,74,0.2);
 }
-.kalori-badge .number { font-size: 2.4rem; font-weight: 800; line-height: 1; }
-.kalori-badge .label  { font-size: 0.78rem; font-weight: 700; opacity: 0.8; margin-top: 2px; }
-.kalori-badge .range  { font-size: 0.75rem; opacity: 0.7; margin-top: 4px; }
+.ks-cal-main { color: #ffffff; }
+.ks-cal-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #bbf7d0; }
+.ks-cal-number { font-size: 2.8rem; font-weight: 900; line-height: 1; color: #ffffff; }
+.ks-cal-unit { font-size: 1rem; font-weight: 600; color: #86efac; margin-left: 3px; }
+.ks-cal-range { font-size: 0.75rem; color: #86efac; margin-top: 4px; }
+.ks-cal-icon { font-size: 3rem; opacity: 0.3; }
 
-/* Macro pills */
-.macro-row { display: flex; gap: 0.6rem; margin-top: 0.8rem; }
-.macro-pill {
-    flex: 1; border-radius: 10px; padding: 0.7rem 0.5rem;
-    text-align: center; font-size: 0.78rem;
+/* ─── Macro pills ─── */
+.ks-macro-row { display: flex; gap: 0.65rem; margin-top: 0.8rem; }
+.ks-macro-pill {
+    flex: 1;
+    border-radius: 14px;
+    padding: 0.9rem 0.6rem;
+    text-align: center;
 }
-.pill-karbo   { background: rgba(99, 179, 237, 0.15); border: 1px solid rgba(99, 179, 237, 0.3); color: #63b3ed; }
-.pill-protein { background: rgba(126, 217, 87, 0.15); border: 1px solid rgba(126, 217, 87, 0.3); color: #7ed957; }
-.pill-lemak   { background: rgba(255, 140, 90, 0.15); border: 1px solid rgba(255, 140, 90, 0.3); color: #ff8c5a; }
-.macro-pill .macro-val { font-size: 1.1rem; font-weight: 700; display: block; }
+.ks-pill-karbo   { background: #eff6ff; border: 1.5px solid #bfdbfe; }
+.ks-pill-protein { background: #f0fdf4; border: 1.5px solid #bbf7d0; }
+.ks-pill-lemak   { background: #fffbeb; border: 1.5px solid #fde68a; }
+.ks-macro-val { font-size: 1.2rem; font-weight: 800; display: block; }
+.ks-macro-name { font-size: 0.7rem; font-weight: 600; margin-top: 1px; text-transform: uppercase; letter-spacing: 0.05em; }
+.ks-karbo-val   { color: #1d4ed8; }
+.ks-protein-val { color: #15803d; }
+.ks-lemak-val   { color: #b45309; }
+.ks-karbo-name   { color: #3b82f6; }
+.ks-protein-name { color: #16a34a; }
+.ks-lemak-name   { color: #d97706; }
 
-/* Alternative suggestion hint */
-.alt-hint {
-    background: rgba(255, 200, 87, 0.08);
-    border-left: 3px solid #ffc857;
-    border-radius: 0 8px 8px 0;
-    padding: 0.6rem 0.9rem;
-    font-size: 0.82rem; color: #ffc857;
+/* ─── Alt suggestion ─── */
+.ks-alt-hint {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-left: 4px solid #f59e0b;
+    border-radius: 0 12px 12px 0;
+    padding: 0.65rem 1rem;
+    font-size: 0.82rem;
+    color: #92400e;
     margin: 0.8rem 0;
 }
 
-/* History card */
-.hist-card {
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 12px;
-    padding: 0.8rem 1rem;
-    margin-bottom: 0.5rem;
-    display: flex; align-items: center; gap: 0.8rem;
-}
-.hist-food { font-weight: 700; color: #ffcf94; font-size: 0.9rem; }
-.hist-meta { color: #a98a78; font-size: 0.75rem; }
-
-/* Disclaimer */
-.disclaimer {
-    background: rgba(255, 122, 71, 0.08);
-    border-left: 3px solid #ff7a47;
-    border-radius: 0 8px 8px 0;
-    padding: 0.6rem 0.9rem;
-    font-size: 0.75rem; color: #c9a695;
-    margin-top: 1rem;
-}
-
-/* Maintenance notice */
-.demo-notice {
-    background: rgba(255, 140, 90, 0.1);
-    border: 1px solid rgba(255, 140, 90, 0.3);
+/* ─── Disclaimer ─── */
+.ks-disclaimer {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
     border-radius: 10px;
-    padding: 0.8rem 1rem;
-    font-size: 0.82rem;
-    color: #ff8c5a;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.74rem;
+    color: #6b7280;
+    margin-top: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+/* ─── Empty state ─── */
+.ks-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #9ca3af;
+}
+.ks-empty-icon { font-size: 3rem; margin-bottom: 0.6rem; }
+.ks-empty-title { font-size: 0.9rem; font-weight: 600; color: #6b7280; }
+.ks-empty-sub { font-size: 0.78rem; margin-top: 0.3rem; }
+
+/* ─── History card ─── */
+.ks-hist-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    transition: border-color 0.2s;
+}
+.ks-hist-card:hover { border-color: #86efac; }
+.ks-hist-emoji { font-size: 1.6rem; }
+.ks-hist-food { font-weight: 700; color: #14532d; font-size: 0.92rem; }
+.ks-hist-meta { color: #6b7280; font-size: 0.75rem; margin-top: 2px; }
+.ks-hist-cal { font-weight: 800; color: #16a34a; font-size: 1rem; margin-left: auto; }
+
+/* ─── Total summary banner ─── */
+.ks-total-banner {
+    background: linear-gradient(135deg, #ecfdf5, #fefce8);
+    border: 1px solid #a7f3d0;
+    border-radius: 14px;
+    padding: 1rem 1.4rem;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.ks-total-label { color: #6b7280; font-size: 0.82rem; font-weight: 500; }
+.ks-total-count { color: #374151; font-size: 0.82rem; }
+.ks-total-kal { color: #15803d; font-weight: 800; font-size: 1.15rem; }
+
+/* ─── Streamlit buttons ─── */
+.stButton > button[kind="primary"] {
+    background: linear-gradient(135deg, #16a34a, #15803d) !important;
+    border: none !important;
+    color: white !important;
+    font-weight: 700 !important;
+    border-radius: 12px !important;
+    padding: 0.65rem 1.5rem !important;
+    font-size: 0.95rem !important;
+    box-shadow: 0 4px 14px rgba(22,163,74,0.3) !important;
+    transition: all 0.2s !important;
+}
+.stButton > button[kind="primary"]:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 20px rgba(22,163,74,0.4) !important;
+}
+.stButton > button:not([kind="primary"]) {
+    border: 1.5px solid #d1fae5 !important;
+    border-radius: 10px !important;
+    color: #15803d !important;
+    font-weight: 600 !important;
+    background: #ffffff !important;
+}
+
+/* ─── Tabs ─── */
+.stTabs [data-baseweb="tab-list"] {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 4px;
+    gap: 4px;
+    border: 1px solid #e5e7eb;
+    margin-bottom: 1rem;
+}
+.stTabs [data-baseweb="tab"] {
+    border-radius: 9px;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: #6b7280;
+    padding: 0.5rem 1.2rem;
+}
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(135deg, #16a34a, #15803d) !important;
+    color: white !important;
+}
+
+/* ─── Selectbox ─── */
+.stSelectbox label { font-size: 0.82rem; font-weight: 600; color: #374151; }
+
+/* ─── Sidebar items ─── */
+.ks-sidebar-logo {
+    text-align: center;
+    padding: 1rem 0 0.8rem;
+}
+.ks-sidebar-logo .logo-icon { font-size: 2.4rem; }
+.ks-sidebar-logo .logo-name {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: #15803d !important;
+    letter-spacing: -0.5px;
+    margin-top: 0.2rem;
+}
+.ks-sidebar-logo .logo-sub {
+    font-size: 0.72rem;
+    color: #6b7280 !important;
+    font-weight: 500;
+}
+.ks-step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    padding: 0.4rem 0;
+}
+.ks-step-num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: #16a34a;
+    color: white !important;
+    font-size: 0.7rem;
+    font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+.ks-step-text { font-size: 0.82rem; color: #374151 !important; line-height: 1.4; }
+.ks-food-chip {
+    display: inline-block;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 0.74rem;
+    color: #15803d !important;
+    margin: 3px 2px;
+    font-weight: 500;
+}
+.ks-src-note {
+    font-size: 0.7rem;
+    color: #9ca3af !important;
+    text-align: center;
+    line-height: 1.5;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Sidebar ─────────────────────────────────────────────────
+# ── Sidebar ──────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
-    <div style='text-align:center; padding: 0.4rem 0 1rem;'>
-        <div style='font-size:2.3rem; line-height:1;'>🍽️</div>
-        <div style='font-size:1.5rem; font-weight:800; color:#ffb088; letter-spacing:0.5px; margin-top:0.3rem;'>UKM</div>
-        <div style='font-size:0.76rem; color:#c9a695; margin-top:0.1rem;'>Ukur Kalori Makanan</div>
+    <div class='ks-sidebar-logo'>
+        <div class='logo-icon'>🥗</div>
+        <div class='logo-name'>KaloriScan</div>
+        <div class='logo-sub'>Klasifikasi Makanan & Estimasi Kalori</div>
     </div>
     """, unsafe_allow_html=True)
-    st.markdown("---")
-    st.markdown("**Cara pakai**")
-    st.markdown("""
-    <div style='font-size:0.8rem; color:#d8b8a8; line-height:1.7;'>
-    1. Upload foto makananmu<br>
-    2. Tekan <b>Cek Sekarang</b><br>
-    3. Lihat estimasi kalori & gizinya
-    </div>
-    """, unsafe_allow_html=True)
-    st.markdown("---")
-    with st.expander("🍱 Makanan yang bisa dikenali"):
-        names = list(DISPLAY_NAMES.values())
-        cols = st.columns(2)
-        for i, name in enumerate(names):
-            with cols[i % 2]:
-                st.markdown(f"<div style='font-size:0.78rem; color:#e0c4b4; padding:2px 0;'>• {name}</div>", unsafe_allow_html=True)
-    st.markdown("---")
-    st.markdown(
-        "<div style='font-size:0.7rem; color:#8a6d60;'>Estimasi nutrisi mengacu pada data TKPI — Kemenkes RI</div>",
-        unsafe_allow_html=True
-    )
 
-# ── Main content ────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("<div style='font-size:0.8rem;font-weight:700;color:#374151;margin-bottom:0.5rem;'>Cara Pakai</div>", unsafe_allow_html=True)
+    steps = [
+        ("1", "Upload foto makanan kamu"),
+        ("2", "Tekan <b>Analisis Sekarang</b>"),
+        ("3", "Lihat estimasi kalori & gizinya"),
+        ("4", "Koreksi jika kurang tepat"),
+    ]
+    for num, text in steps:
+        st.markdown(f"""
+        <div class='ks-step-item'>
+            <div class='ks-step-num'>{num}</div>
+            <div class='ks-step-text'>{text}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    with st.expander("🍱 13 Makanan yang Didukung"):
+        chips = "".join([f"<span class='ks-food-chip'>{n}</span>" for n in DISPLAY_NAMES.values()])
+        st.markdown(f"<div style='line-height:2;'>{chips}</div>", unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("""
+    <div class='ks-src-note'>
+        Data nutrisi mengacu pada<br>
+        <b>TKPI — Kemenkes RI</b><br><br>
+        Nilai kalori bersifat <i>estimasi</i>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ── Hero ─────────────────────────────────────────────────────
 st.markdown("""
-<div class='hero'>
-    <h1>🍽️ UKM</h1>
-    <p class='hero-sub'>Ukur Kalori Makanan</p>
-    <p class='hero-desc'>Foto makananmu, langsung tahu perkiraan kalori &amp; gizinya.</p>
+<div class='ks-hero'>
+    <div class='ks-hero-badge'>✦ Dashboard Klasifikasi Makanan</div>
+    <div class='ks-hero-logo'>🥗</div>
+    <h1>Kalori<span>Scan</span></h1>
+    <p class='ks-hero-sub'>Foto makananmu → kenali jenisnya → estimasi kalori & gizi secara otomatis</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -284,16 +547,12 @@ demo_mode = active_model is None
 
 if demo_mode:
     st.markdown("""
-    <div class='demo-notice'>
-        🔧 Sistem sedang pemanasan. Coba upload ulang foto kamu dalam beberapa saat.
+    <div class='ks-notice'>
+        🔧 <span><b>Mode Demo Aktif</b> — Model AI belum terhubung. Prediksi bersifat simulasi acak untuk menampilkan tampilan.</span>
     </div>
     """, unsafe_allow_html=True)
-    st.markdown("")
 
-# Tabs
-tab1, tab2 = st.tabs(["📸 Cek Kalori", "🕒 Riwayat"])
-
-# ── Session state ───────────────────────────────────────────
+# ── Session state ─────────────────────────────────────────────
 if "history" not in st.session_state:
     st.session_state.history = []
 if "result" not in st.session_state:
@@ -301,12 +560,15 @@ if "result" not in st.session_state:
 if "current_upload_id" not in st.session_state:
     st.session_state.current_upload_id = None
 
-# ── Tab 1: Cek Kalori ────────────────────────────────────────
+# ── Tabs ──────────────────────────────────────────────────────
+tab1, tab2 = st.tabs(["📸  Cek Kalori", "📋  Riwayat Hari Ini"])
+
+# ── Tab 1: Cek Kalori ─────────────────────────────────────────
 with tab1:
     col_upload, col_result = st.columns([1, 1], gap="large")
 
     with col_upload:
-        st.markdown("#### Upload Foto Makanan")
+        st.markdown("<div class='ks-section-label'>Upload Foto Makanan</div>", unsafe_allow_html=True)
         uploaded = st.file_uploader(
             "Pilih atau drag & drop gambar",
             type=["jpg", "jpeg", "png", "webp"],
@@ -320,25 +582,24 @@ with tab1:
                 st.session_state.result = None
 
             img = Image.open(uploaded)
-            st.image(img, caption="Foto kamu", use_container_width=True)
-            analyze_btn = st.button("🔍 Cek Sekarang", use_container_width=True, type="primary")
+            st.image(img, caption="Foto yang kamu upload", use_container_width=True)
+            analyze_btn = st.button("🔍 Analisis Sekarang", use_container_width=True, type="primary")
         else:
             st.markdown("""
-            <div style='text-align:center;padding:3rem 1rem;color:#8a6d60;'>
-                <div style='font-size:3rem'>📷</div>
-                <div style='font-size:0.85rem;margin-top:0.5rem'>Upload foto makanan untuk memulai</div>
-                <div style='font-size:0.75rem;margin-top:0.3rem;color:#6a4f44'>JPG, PNG, WEBP didukung</div>
+            <div class='ks-empty' style='border: 2px dashed #86efac; border-radius: 18px; background: rgba(240,253,244,0.5);'>
+                <div class='ks-empty-icon'>📷</div>
+                <div class='ks-empty-title'>Upload foto makananmu</div>
+                <div class='ks-empty-sub'>Format: JPG, PNG, WEBP</div>
             </div>
             """, unsafe_allow_html=True)
             analyze_btn = False
 
     with col_result:
-        st.markdown("#### Hasil")
+        st.markdown("<div class='ks-section-label'>Hasil Analisis</div>", unsafe_allow_html=True)
 
         if uploaded and analyze_btn:
-            with st.spinner("Menganalisis foto..."):
+            with st.spinner("Menganalisis foto makanan..."):
                 time.sleep(0.4)
-
                 if not demo_mode:
                     size = IMG_SIZE[active_model]
                     arr  = preprocess_image(img, size)
@@ -357,6 +618,7 @@ with tab1:
             nutrition = estimate_nutrition(food_class)
             st.session_state.history.insert(0, {
                 "display" : DISPLAY_NAMES[food_class],
+                "emoji"   : FOOD_EMOJI.get(food_class, "🍽️"),
                 "kalori"  : nutrition["kalori"] if nutrition else "-",
                 "kal_min" : nutrition["kal_min"] if nutrition else "-",
                 "kal_max" : nutrition["kal_max"] if nutrition else "-",
@@ -370,35 +632,51 @@ with tab1:
             confidence = result["confidence"]
             manual     = result.get("manual", False)
             nutrition  = estimate_nutrition(food_class)
+            emoji      = FOOD_EMOJI.get(food_class, "🍽️")
 
             if manual:
-                label, color = "Dipilih manual", "#a98a78"
+                label, color, bg = "Dipilih Manual", "#374151", "#f3f4f6"
             else:
-                label, color = confidence_badge(confidence)
+                label, color, bg = confidence_badge(confidence)
+
+            pct = f"{confidence*100:.0f}%" if not manual else ""
 
             st.markdown(f"""
-            <div class='result-card'>
-                <div class='confidence-badge' style='color:{color};border-color:{color}55;background:{color}1A;'>{label}</div>
-                <div class='food-name'>{DISPLAY_NAMES[food_class]}</div>
+            <div class='ks-result-card'>
+                <div class='ks-result-top'>
+                    <span class='ks-conf-badge' style='color:{color};background:{bg};'>{label} {pct}</span>
+                </div>
+                <span class='ks-food-emoji'>{emoji}</span>
+                <div class='ks-food-name'>{DISPLAY_NAMES[food_class]}</div>
+                <div class='ks-food-sub'>Terdeteksi oleh KaloriScan AI</div>
             </div>
             """, unsafe_allow_html=True)
 
             if nutrition:
                 st.markdown(f"""
-                <div class='kalori-badge'>
-                    <div class='label'>ESTIMASI KALORI PER PORSI ({nutrition['porsi_g']}g)</div>
-                    <div class='number'>~{nutrition['kalori']} kkal</div>
-                    <div class='range'>range: {nutrition['kal_min']}–{nutrition['kal_max']} kkal</div>
+                <div class='ks-calorie-card'>
+                    <div class='ks-cal-main'>
+                        <div class='ks-cal-label'>Estimasi Kalori · {nutrition['porsi_g']}g per porsi</div>
+                        <div>
+                            <span class='ks-cal-number'>~{nutrition['kalori']}</span>
+                            <span class='ks-cal-unit'>kkal</span>
+                        </div>
+                        <div class='ks-cal-range'>Rentang: {nutrition['kal_min']} – {nutrition['kal_max']} kkal</div>
+                    </div>
+                    <div class='ks-cal-icon'>🔥</div>
                 </div>
-                <div class='macro-row'>
-                    <div class='macro-pill pill-karbo'>
-                        <span class='macro-val'>~{nutrition['karbo']}g</span>Karbohidrat
+                <div class='ks-macro-row'>
+                    <div class='ks-macro-pill ks-pill-karbo'>
+                        <span class='ks-macro-val ks-karbo-val'>~{nutrition['karbo']}g</span>
+                        <span class='ks-macro-name ks-karbo-name'>Karbo</span>
                     </div>
-                    <div class='macro-pill pill-protein'>
-                        <span class='macro-val'>~{nutrition['protein']}g</span>Protein
+                    <div class='ks-macro-pill ks-pill-protein'>
+                        <span class='ks-macro-val ks-protein-val'>~{nutrition['protein']}g</span>
+                        <span class='ks-macro-name ks-protein-name'>Protein</span>
                     </div>
-                    <div class='macro-pill pill-lemak'>
-                        <span class='macro-val'>~{nutrition['lemak']}g</span>Lemak
+                    <div class='ks-macro-pill ks-pill-lemak'>
+                        <span class='ks-macro-val ks-lemak-val'>~{nutrition['lemak']}g</span>
+                        <span class='ks-macro-name ks-lemak-name'>Lemak</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -406,10 +684,13 @@ with tab1:
             if not manual and result.get("alt") and confidence < 0.55:
                 alt_display = DISPLAY_NAMES.get(result["alt"], result["alt"])
                 st.markdown(f"""
-                <div class='alt-hint'>🤔 Hasilnya kurang yakin — mungkin juga ini <b>{alt_display}</b>?</div>
+                <div class='ks-alt-hint'>
+                    🤔 Kurang yakin — mungkin juga <b>{alt_display}</b>? Koreksi di bawah jika perlu.
+                </div>
                 """, unsafe_allow_html=True)
 
-            override_options = ["Sudah benar, lanjutkan"] + [
+            st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
+            override_options = ["✅ Sudah benar, lanjutkan"] + [
                 n for k, n in DISPLAY_NAMES.items() if k != food_class
             ]
             picked = st.selectbox(
@@ -417,7 +698,7 @@ with tab1:
                 override_options,
                 key=f"override_select_{food_class}_{manual}"
             )
-            if picked != "Sudah benar, lanjutkan":
+            if picked != "✅ Sudah benar, lanjutkan":
                 reverse = {v: k for k, v in DISPLAY_NAMES.items()}
                 new_class = reverse[picked]
                 st.session_state.result = {
@@ -428,6 +709,7 @@ with tab1:
                     new_nutri = estimate_nutrition(new_class)
                     st.session_state.history[0].update({
                         "display": DISPLAY_NAMES[new_class],
+                        "emoji"  : FOOD_EMOJI.get(new_class, "🍽️"),
                         "kalori" : new_nutri["kalori"],
                         "kal_min": new_nutri["kal_min"],
                         "kal_max": new_nutri["kal_max"],
@@ -436,39 +718,43 @@ with tab1:
                 st.rerun()
 
             st.markdown("""
-            <div class='disclaimer'>
-                ℹ️ Nilai kalori & nutrisi adalah <b>estimasi</b> berdasarkan range umum per porsi.
-                Nilai aktual bervariasi tergantung resep, ukuran porsi, dan cara memasak.
+            <div class='ks-disclaimer'>
+                <span>ℹ️</span>
+                <span>Nilai kalori & nutrisi adalah <b>estimasi</b> berdasarkan rentang umum per porsi (TKPI Kemenkes RI). Nilai aktual bervariasi tergantung resep, ukuran porsi, dan cara memasak.</span>
             </div>
             """, unsafe_allow_html=True)
 
         elif uploaded:
             st.markdown("""
-            <div style='text-align:center;padding:3rem 1rem;color:#8a6d60;'>
-                <div style='font-size:2.5rem'>👉</div>
-                <div style='font-size:0.85rem;margin-top:0.5rem'>Tekan "Cek Sekarang" untuk melihat hasilnya</div>
+            <div class='ks-empty'>
+                <div class='ks-empty-icon'>👆</div>
+                <div class='ks-empty-title'>Tekan "Analisis Sekarang"</div>
+                <div class='ks-empty-sub'>untuk melihat estimasi kalori & gizi</div>
             </div>
             """, unsafe_allow_html=True)
         else:
             st.markdown("""
-            <div style='text-align:center;padding:3rem 1rem;color:#8a6d60;'>
-                <div style='font-size:2.5rem'>🔍</div>
-                <div style='font-size:0.85rem;margin-top:0.5rem'>Hasil cek kalori akan muncul di sini</div>
+            <div class='ks-empty'>
+                <div class='ks-empty-icon'>🥗</div>
+                <div class='ks-empty-title'>Hasil analisis muncul di sini</div>
+                <div class='ks-empty-sub'>Upload foto makanan terlebih dahulu</div>
             </div>
             """, unsafe_allow_html=True)
 
-# ── Tab 2: Riwayat ──────────────────────────────────────────
+# ── Tab 2: Riwayat ───────────────────────────────────────────
 with tab2:
-    st.markdown("#### 🕒 Riwayat")
     if not st.session_state.history:
         st.markdown("""
-        <div style='text-align:center;padding:3rem;color:#8a6d60;'>
-            <div style='font-size:2rem'>📭</div>
-            <div style='font-size:0.85rem;margin-top:0.5rem'>Belum ada riwayat. Yuk cek makananmu dulu!</div>
+        <div class='ks-empty' style='padding: 4rem 1rem;'>
+            <div class='ks-empty-icon'>📭</div>
+            <div class='ks-empty-title'>Riwayat masih kosong</div>
+            <div class='ks-empty-sub'>Yuk cek makananmu sekarang!</div>
         </div>
         """, unsafe_allow_html=True)
     else:
-        col_clear = st.columns([4, 1])[1]
+        col_title, col_clear = st.columns([4, 1])
+        with col_title:
+            st.markdown("<div class='ks-section-label'>Semua makanan yang dicek hari ini</div>", unsafe_allow_html=True)
         with col_clear:
             if st.button("🗑️ Hapus Semua", use_container_width=True):
                 st.session_state.history = []
@@ -476,22 +762,26 @@ with tab2:
                 st.rerun()
 
         total_kal = sum(h["kalori"] for h in st.session_state.history if isinstance(h["kalori"], int))
+        count = len(st.session_state.history)
         st.markdown(f"""
-        <div style='background:rgba(255,122,71,0.1);border-radius:12px;padding:1rem 1.4rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;'>
-            <div style='color:#c9a695;font-size:0.85rem'>{len(st.session_state.history)} item dicek hari ini</div>
-            <div style='color:#ffcf94;font-weight:700;font-size:1.1rem'>~{total_kal} kkal total</div>
+        <div class='ks-total-banner'>
+            <div>
+                <div class='ks-total-label'>Total kalori hari ini</div>
+                <div class='ks-total-count'>{count} item dianalisis</div>
+            </div>
+            <div class='ks-total-kal'>~{total_kal} kkal</div>
         </div>
         """, unsafe_allow_html=True)
 
         for h in st.session_state.history:
+            emoji = h.get("emoji", "🍽️")
             st.markdown(f"""
-            <div class='hist-card'>
-                <div style='font-size:1.4rem'>🍽️</div>
-                <div style='flex:1'>
-                    <div class='hist-food'>{h['display']}</div>
-                    <div class='hist-meta'>
-                        ~{h['kalori']} kkal ({h['kal_min']}–{h['kal_max']}) &nbsp;·&nbsp; porsi {h['porsi_g']}g
-                    </div>
+            <div class='ks-hist-card'>
+                <div class='ks-hist-emoji'>{emoji}</div>
+                <div>
+                    <div class='ks-hist-food'>{h['display']}</div>
+                    <div class='ks-hist-meta'>Porsi {h['porsi_g']}g &nbsp;·&nbsp; rentang {h['kal_min']}–{h['kal_max']} kkal</div>
                 </div>
+                <div class='ks-hist-cal'>~{h['kalori']} kkal</div>
             </div>
             """, unsafe_allow_html=True)
