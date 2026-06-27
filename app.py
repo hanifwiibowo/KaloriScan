@@ -429,7 +429,8 @@ with tab1:
                     st.session_state.current_upload_id = uid
                     st.session_state.result = None
                 img = Image.open(uploaded)
-                st.image(img, caption="Foto yang kamu upload", use_container_width=True)
+                st.image(img, use_container_width=True)
+                st.markdown("<div style='text-align:center;font-size:0.75rem;color:#374151;font-weight:500;margin-top:4px;'>📷 Foto yang kamu upload</div>", unsafe_allow_html=True)
             else:
                 st.markdown("""<div class='ks-empty' style='border:2px dashed #86efac;border-radius:18px;background:rgba(240,253,244,0.5);'>
                     <div class='ks-empty-icon'>📁</div>
@@ -648,6 +649,7 @@ with tab2:
             marker_color=bar_colors,
             text=[f"{v} kkal" for v in kalvals],
             textposition="outside",
+            textfont=dict(color="#111827", size=13),
             hovertemplate="<b>%{x}</b><br>%{y} kkal<extra></extra>",
         ))
         fig_bar.update_layout(
@@ -655,7 +657,8 @@ with tab2:
             yaxis_title="kkal", xaxis_tickangle=-20,
             margin=dict(t=40,b=60,l=40,r=20), height=300,
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            yaxis=dict(gridcolor="#e5e7eb"),
+            yaxis=dict(gridcolor="#e5e7eb", tickfont=dict(color="#374151")),
+            xaxis=dict(tickfont=dict(color="#374151")),
         )
         st.plotly_chart(fig_bar, use_container_width=True)
 
@@ -670,13 +673,15 @@ with tab2:
             marker_color=["#3b82f6","#16a34a","#f59e0b"],
             text=[f"{total_karbo}g",f"{total_protein}g",f"{total_lemak}g"],
             textposition="outside",
+            textfont=dict(color="#111827", size=13),
             hovertemplate="<b>%{x}</b><br>%{y}g<extra></extra>",
         ))
         fig_makro.update_layout(
             title=dict(text="Total Makronutrien Hari Ini", font_size=14, font_color="#14532d"),
             yaxis_title="gram", margin=dict(t=40,b=20,l=40,r=20), height=260,
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            yaxis=dict(gridcolor="#e5e7eb"),
+            yaxis=dict(gridcolor="#e5e7eb", tickfont=dict(color="#374151")),
+            xaxis=dict(tickfont=dict(color="#374151")),
         )
         st.plotly_chart(fig_makro, use_container_width=True)
 
