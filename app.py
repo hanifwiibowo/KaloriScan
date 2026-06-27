@@ -343,6 +343,12 @@ with st.sidebar:
     st.markdown("<div style='font-size:0.8rem;font-weight:700;color:#374151;margin-bottom:0.5rem;'>🎯 Target Kalori Harian</div>", unsafe_allow_html=True)
     target_kal = st.number_input("kkal/hari", min_value=1000, max_value=5000, value=2000, step=50, label_visibility="collapsed")
     st.session_state["target_kal"] = target_kal
+    st.markdown("""
+    <div style='background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:0.55rem 0.75rem;margin-top:0.4rem;font-size:0.74rem;color:#92400e;line-height:1.5;'>
+        💡 Belum tahu target kalorimu?<br>
+        Hitung dulu di tab <b>⚖️ Kalkulator BMI</b> — hasil TDEE bisa langsung dipakai sebagai target.
+    </div>
+    """, unsafe_allow_html=True)
 
     # Footer note pojok kiri bawah sidebar
     st.markdown("---")
@@ -537,10 +543,16 @@ with tab1:
                 fig_donut.add_annotation(text=f"<b>{nutrition['kalori']}</b><br>kkal", x=0.5, y=0.5,
                     font_size=16, showarrow=False, font_color="#14532d")
                 fig_donut.update_layout(
-                    showlegend=True, margin=dict(t=10,b=10,l=10,r=10),
-                    height=260, paper_bgcolor="rgba(0,0,0,0)",
+                    showlegend=True, margin=dict(t=10,b=80,l=10,r=10),
+                    height=300, paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
-                    legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5, font_size=11),
+                    legend=dict(
+                        orientation="h", yanchor="bottom", y=-0.28,
+                        xanchor="center", x=0.5,
+                        font=dict(size=13, color="#374151"),
+                        bgcolor="rgba(255,255,255,0.8)",
+                        bordercolor="#d1fae5", borderwidth=1,
+                    ),
                 )
                 st.plotly_chart(fig_donut, use_container_width=True)
 
@@ -691,7 +703,6 @@ with tab3:
     col_form, col_bmi = st.columns([1,1], gap="large")
 
     with col_form:
-        st.markdown("<div style='background:#ffffff;border:1px solid #d1fae5;border-radius:16px;padding:1.4rem 1.6rem;'>", unsafe_allow_html=True)
         gender   = st.selectbox("Jenis Kelamin", ["Laki-laki","Perempuan"])
         usia     = st.number_input("Usia (tahun)", min_value=10, max_value=100, value=22)
         bb       = st.number_input("Berat Badan (kg)", min_value=20.0, max_value=300.0, value=65.0, step=0.5)
@@ -705,7 +716,6 @@ with tab3:
         ])
         tujuan = st.selectbox("Tujuan", ["Turun berat badan (-500 kkal)","Jaga berat badan","Naik berat badan (+500 kkal)"])
         hitung_btn = st.button("⚖️ Hitung Sekarang", use_container_width=True, type="primary")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     with col_bmi:
         if hitung_btn:
