@@ -346,9 +346,9 @@ with st.sidebar:
         min_value=1000, max_value=5000,
         step=50,
         label_visibility="collapsed",
-        key="target_kal_input"
+        key="target_kal_input",
+        on_change=lambda: st.session_state.update({"target_kal": st.session_state["target_kal_input"]})
     )
-    st.session_state["target_kal"] = st.session_state["target_kal_input"]
     target_kal = st.session_state["target_kal"]
     st.markdown("""
     <div style='background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:0.55rem 0.75rem;margin-top:0.4rem;font-size:0.74rem;color:#92400e;line-height:1.5;'>
