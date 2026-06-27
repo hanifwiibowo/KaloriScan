@@ -71,13 +71,20 @@ CALORIE_DB = {
 
 IMG_SIZE = {"SimpleCNN":(128,128),"MobileNetV2":(128,128),"EfficientNetB0":(224,224)}
 
+# FIX: ambang batas tegas — di bawah ini, gambar dianggap BUKAN makanan
+# dan hasil prediksi TIDAK ditampilkan sebagai hasil yang valid.
+NON_FOOD_THRESHOLD = 0.35
+
 # ── Helpers ──────────────────────────────────────────────────
 def estimate_nutrition(food_class):
     data = CALORIE_DB.get(food_class)
     if not data: return None
-    karbo   = random.randint(*data["karbo"])
-    protein = random.randint(*data["protein"])
-    lemak   = random.randint(*data["lemak"])
+    # FIX: pakai titik tengah rentang, BUKAN random.randint.
+    # Sebelumnya nilai di-random ulang setiap kali fungsi ini dipanggil,
+    # jadi makanan yang sama bisa dapat kalori berbeda tiap analisis.
+    karbo   = round(sum(data["karbo"]) / 2)
+    protein = round(sum(data["protein"]) / 2)
+    lemak   = round(sum(data["lemak"]) / 2)
     kalori  = karbo*4 + protein*4 + lemak*9
     kal_min = data["karbo"][0]*4 + data["protein"][0]*4 + data["lemak"][0]*9
     kal_max = data["karbo"][1]*4 + data["protein"][1]*4 + data["lemak"][1]*9
@@ -473,17 +480,29 @@ with tab1:
                     alt_class  = random.choice([c for c in CLASS_NAMES if c != food_class])
 
             nutrition = estimate_nutrition(food_class)
-            st.session_state.result = {"food":food_class,"confidence":confidence,"alt":alt_class,"manual":False,"nutrition":nutrition}
-            st.session_state.history.insert(0, {
-                "display":DISPLAY_NAMES[food_class], "emoji":FOOD_EMOJI.get(food_class,"🍽️"),
-                "kalori":nutrition["kalori"] if nutrition else "-",
-                "kal_min":nutrition["kal_min"] if nutrition else "-",
-                "kal_max":nutrition["kal_max"] if nutrition else "-",
-                "porsi_g":nutrition["porsi_g"] if nutrition else "-",
-                "karbo":nutrition["karbo"] if nutrition else 0,
-                "protein":nutrition["protein"] if nutrition else 0,
-                "lemak":nutrition["lemak"] if nutrition else 0,
-            })
+
+            # FIX: kalau confidence di bawah ambang & bukan demo mode,
+            # anggap gambar BUKAN makanan — jangan tampilkan hasil prediksi
+            # yang menyesatkan (mis. screenshot kebaca "Rawon" pede 88%).
+            is_rejected = (not demo_mode) and (confidence < NON_FOOD_THRESHOLD)
+
+            if is_rejected:
+                st.session_state.result = {
+                    "food":None, "confidence":confidence, "alt":alt_class,
+                    "manual":False, "nutrition":None, "rejected":True,
+                }
+            else:
+                st.session_state.result = {"food":food_class,"confidence":confidence,"alt":alt_class,"manual":False,"nutrition":nutrition,"rejected":False}
+                st.session_state.history.insert(0, {
+                    "display":DISPLAY_NAMES[food_class], "emoji":FOOD_EMOJI.get(food_class,"🍽️"),
+                    "kalori":nutrition["kalori"] if nutrition else "-",
+                    "kal_min":nutrition["kal_min"] if nutrition else "-",
+                    "kal_max":nutrition["kal_max"] if nutrition else "-",
+                    "porsi_g":nutrition["porsi_g"] if nutrition else "-",
+                    "karbo":nutrition["karbo"] if nutrition else 0,
+                    "protein":nutrition["protein"] if nutrition else 0,
+                    "lemak":nutrition["lemak"] if nutrition else 0,
+                })
 
         result = st.session_state.result
 
@@ -491,104 +510,135 @@ with tab1:
             food_class = result["food"]
             confidence = result["confidence"]
             manual     = result.get("manual", False)
-            nutrition  = result.get("nutrition") or estimate_nutrition(food_class)
-            emoji      = FOOD_EMOJI.get(food_class,"🍽️")
+            rejected   = result.get("rejected", False)
 
-            if manual: label,color,bg = "Dipilih Manual","#374151","#f3f4f6"
-            else: label,color,bg = confidence_badge(confidence)
-            pct = f"{confidence*100:.0f}%" if not manual else ""
-
-            st.markdown(f"""
-            <div class='ks-result-card'>
-                <div><span class='ks-conf-badge' style='color:{color};background:{bg};'>{label} {pct}</span></div>
-                <span class='ks-food-emoji'>{emoji}</span>
-                <div class='ks-food-name'>{DISPLAY_NAMES[food_class]}</div>
-                <div class='ks-food-sub'>Terdeteksi oleh KaloriScan AI</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            if nutrition:
+            if rejected:
                 st.markdown(f"""
-                <div class='ks-calorie-card'>
-                    <div class='ks-cal-main'>
-                        <div class='ks-cal-label'>Estimasi Kalori · {nutrition['porsi_g']}g per porsi</div>
-                        <div><span class='ks-cal-number'>~{nutrition['kalori']}</span><span class='ks-cal-unit'>kkal</span></div>
-                        <div class='ks-cal-range'>Rentang: {nutrition['kal_min']} – {nutrition['kal_max']} kkal</div>
+                <div class='ks-result-card' style='text-align:center;'>
+                    <div style='font-size:2.4rem;'>🤷‍♂️</div>
+                    <div style='font-weight:700;color:#92400e;font-size:1.05rem;margin-top:0.3rem;'>
+                        Gambar tidak terdeteksi sebagai makanan
                     </div>
-                    <div class='ks-cal-icon'>🔥</div>
-                </div>
-                <div class='ks-macro-row'>
-                    <div class='ks-macro-pill ks-pill-karbo'>
-                        <span class='ks-macro-val ks-karbo-val'>~{nutrition['karbo']}g</span>
-                        <span class='ks-macro-name ks-karbo-name'>Karbo</span>
-                    </div>
-                    <div class='ks-macro-pill ks-pill-protein'>
-                        <span class='ks-macro-val ks-protein-val'>~{nutrition['protein']}g</span>
-                        <span class='ks-macro-name ks-protein-name'>Protein</span>
-                    </div>
-                    <div class='ks-macro-pill ks-pill-lemak'>
-                        <span class='ks-macro-val ks-lemak-val'>~{nutrition['lemak']}g</span>
-                        <span class='ks-macro-name ks-lemak-name'>Lemak</span>
+                    <div style='font-size:0.82rem;color:#6b7280;margin-top:0.3rem;'>
+                        Confidence model hanya {confidence*100:.0f}% — coba upload foto makanan yang lebih jelas,
+                        atau pilih manual di bawah jika ini memang makanan.
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
 
-                # ── Donut chart makro ──
-                st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
-                st.markdown("<div class='ks-section-label'>Distribusi Makronutrien</div>", unsafe_allow_html=True)
-                karbo_kal   = nutrition["karbo"]*4
-                protein_kal = nutrition["protein"]*4
-                lemak_kal   = nutrition["lemak"]*9
-                total_kal_makro = karbo_kal + protein_kal + lemak_kal
-
-                import plotly.graph_objects as go
-                fig_donut = go.Figure(go.Pie(
-                    labels=["Karbohidrat","Protein","Lemak"],
-                    values=[karbo_kal, protein_kal, lemak_kal],
-                    hole=0.65,
-                    marker_colors=["#3b82f6","#16a34a","#f59e0b"],
-                    textinfo="label+percent",
-                    textfont=dict(size=12, color="#1f2937"),
-                    outsidetextfont=dict(size=12, color="#1f2937"),
-                    insidetextfont=dict(size=12, color="#ffffff"),
-                    hovertemplate="<b>%{label}</b><br>%{value} kkal<br>%{percent}<extra></extra>",
-                ))
-                fig_donut.add_annotation(text=f"<b>{nutrition['kalori']}</b><br>kkal", x=0.5, y=0.5,
-                    font_size=16, showarrow=False, font_color="#14532d")
-                fig_donut.update_layout(
-                    showlegend=True, margin=dict(t=10,b=80,l=10,r=10),
-                    height=300, paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    legend=dict(
-                        orientation="h", yanchor="bottom", y=-0.28,
-                        xanchor="center", x=0.5,
-                        font=dict(size=13, color="#374151"),
-                        bgcolor="rgba(255,255,255,0.8)",
-                        bordercolor="#d1fae5", borderwidth=1,
-                    ),
-                )
-                st.plotly_chart(fig_donut, use_container_width=True)
-
-            if not manual and result.get("alt") and confidence < 0.55:
-                alt_display = DISPLAY_NAMES.get(result["alt"], result["alt"])
-                st.markdown(f"<div class='ks-alt-hint'>🤔 Kurang yakin — mungkin juga <b>{alt_display}</b>? Koreksi di bawah jika perlu.</div>", unsafe_allow_html=True)
-
-            override_options = ["✅ Sudah benar, lanjutkan"] + [n for k,n in DISPLAY_NAMES.items() if k != food_class]
-            picked = st.selectbox("Bukan ini? Pilih yang benar:", override_options, key=f"override_{food_class}_{manual}")
-            if picked != "✅ Sudah benar, lanjutkan":
-                reverse = {v:k for k,v in DISPLAY_NAMES.items()}
-                new_class = reverse[picked]
-                new_nutri = estimate_nutrition(new_class)
-                st.session_state.result = {"food":new_class,"confidence":1.0,"alt":None,"manual":True,"nutrition":new_nutri}
-                if st.session_state.history:
-                    st.session_state.history[0].update({
-                        "display":DISPLAY_NAMES[new_class],"emoji":FOOD_EMOJI.get(new_class,"🍽️"),
-                        "kalori":new_nutri["kalori"],"kal_min":new_nutri["kal_min"],"kal_max":new_nutri["kal_max"],
-                        "porsi_g":new_nutri["porsi_g"],"karbo":new_nutri["karbo"],"protein":new_nutri["protein"],"lemak":new_nutri["lemak"],
+                override_options = ["— Pilih makanan secara manual —"] + list(DISPLAY_NAMES.values())
+                picked = st.selectbox("Ini sebenarnya makanan apa?", override_options, key="override_rejected")
+                if picked != "— Pilih makanan secara manual —":
+                    reverse = {v:k for k,v in DISPLAY_NAMES.items()}
+                    new_class = reverse[picked]
+                    new_nutri = estimate_nutrition(new_class)
+                    st.session_state.result = {"food":new_class,"confidence":1.0,"alt":None,"manual":True,"nutrition":new_nutri,"rejected":False}
+                    st.session_state.history.insert(0, {
+                        "display":DISPLAY_NAMES[new_class], "emoji":FOOD_EMOJI.get(new_class,"🍽️"),
+                        "kalori":new_nutri["kalori"], "kal_min":new_nutri["kal_min"], "kal_max":new_nutri["kal_max"],
+                        "porsi_g":new_nutri["porsi_g"], "karbo":new_nutri["karbo"], "protein":new_nutri["protein"], "lemak":new_nutri["lemak"],
                     })
-                st.rerun()
+                    st.rerun()
 
-            st.markdown("<div class='ks-disclaimer'><span>ℹ️</span><span>Nilai kalori & nutrisi adalah <b>estimasi</b> berdasarkan rentang umum per porsi (TKPI Kemenkes RI). Nilai aktual bervariasi tergantung resep, ukuran porsi, dan cara memasak.</span></div>", unsafe_allow_html=True)
+            elif food_class:
+                nutrition  = result.get("nutrition") or estimate_nutrition(food_class)
+                emoji      = FOOD_EMOJI.get(food_class,"🍽️")
+
+                if manual: label,color,bg = "Dipilih Manual","#374151","#f3f4f6"
+                else: label,color,bg = confidence_badge(confidence)
+                pct = f"{confidence*100:.0f}%" if not manual else ""
+
+                st.markdown(f"""
+                <div class='ks-result-card'>
+                    <div><span class='ks-conf-badge' style='color:{color};background:{bg};'>{label} {pct}</span></div>
+                    <span class='ks-food-emoji'>{emoji}</span>
+                    <div class='ks-food-name'>{DISPLAY_NAMES[food_class]}</div>
+                    <div class='ks-food-sub'>Terdeteksi oleh KaloriScan AI</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                if nutrition:
+                    st.markdown(f"""
+                    <div class='ks-calorie-card'>
+                        <div class='ks-cal-main'>
+                            <div class='ks-cal-label'>Estimasi Kalori · {nutrition['porsi_g']}g per porsi</div>
+                            <div><span class='ks-cal-number'>~{nutrition['kalori']}</span><span class='ks-cal-unit'>kkal</span></div>
+                            <div class='ks-cal-range'>Rentang: {nutrition['kal_min']} – {nutrition['kal_max']} kkal</div>
+                        </div>
+                        <div class='ks-cal-icon'>🔥</div>
+                    </div>
+                    <div class='ks-macro-row'>
+                        <div class='ks-macro-pill ks-pill-karbo'>
+                            <span class='ks-macro-val ks-karbo-val'>~{nutrition['karbo']}g</span>
+                            <span class='ks-macro-name ks-karbo-name'>Karbo</span>
+                        </div>
+                        <div class='ks-macro-pill ks-pill-protein'>
+                            <span class='ks-macro-val ks-protein-val'>~{nutrition['protein']}g</span>
+                            <span class='ks-macro-name ks-protein-name'>Protein</span>
+                        </div>
+                        <div class='ks-macro-pill ks-pill-lemak'>
+                            <span class='ks-macro-val ks-lemak-val'>~{nutrition['lemak']}g</span>
+                            <span class='ks-macro-name ks-lemak-name'>Lemak</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    # ── Donut chart makro ──
+                    st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div class='ks-section-label'>Distribusi Makronutrien</div>", unsafe_allow_html=True)
+                    karbo_kal   = nutrition["karbo"]*4
+                    protein_kal = nutrition["protein"]*4
+                    lemak_kal   = nutrition["lemak"]*9
+                    total_kal_makro = karbo_kal + protein_kal + lemak_kal
+
+                    import plotly.graph_objects as go
+                    fig_donut = go.Figure(go.Pie(
+                        labels=["Karbohidrat","Protein","Lemak"],
+                        values=[karbo_kal, protein_kal, lemak_kal],
+                        hole=0.65,
+                        marker_colors=["#3b82f6","#16a34a","#f59e0b"],
+                        textinfo="label+percent",
+                        textfont=dict(size=12, color="#1f2937"),
+                        outsidetextfont=dict(size=12, color="#1f2937"),
+                        insidetextfont=dict(size=12, color="#ffffff"),
+                        hovertemplate="<b>%{label}</b><br>%{value} kkal<br>%{percent}<extra></extra>",
+                    ))
+                    fig_donut.add_annotation(text=f"<b>{nutrition['kalori']}</b><br>kkal", x=0.5, y=0.5,
+                        font_size=16, showarrow=False, font_color="#14532d")
+                    fig_donut.update_layout(
+                        showlegend=True, margin=dict(t=10,b=80,l=10,r=10),
+                        height=300, paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        legend=dict(
+                            orientation="h", yanchor="bottom", y=-0.28,
+                            xanchor="center", x=0.5,
+                            font=dict(size=13, color="#374151"),
+                            bgcolor="rgba(255,255,255,0.8)",
+                            bordercolor="#d1fae5", borderwidth=1,
+                        ),
+                    )
+                    st.plotly_chart(fig_donut, use_container_width=True)
+
+                if not manual and result.get("alt") and confidence < 0.55:
+                    alt_display = DISPLAY_NAMES.get(result["alt"], result["alt"])
+                    st.markdown(f"<div class='ks-alt-hint'>🤔 Kurang yakin — mungkin juga <b>{alt_display}</b>? Koreksi di bawah jika perlu.</div>", unsafe_allow_html=True)
+
+                override_options = ["✅ Sudah benar, lanjutkan"] + [n for k,n in DISPLAY_NAMES.items() if k != food_class]
+                picked = st.selectbox("Bukan ini? Pilih yang benar:", override_options, key=f"override_{food_class}_{manual}")
+                if picked != "✅ Sudah benar, lanjutkan":
+                    reverse = {v:k for k,v in DISPLAY_NAMES.items()}
+                    new_class = reverse[picked]
+                    new_nutri = estimate_nutrition(new_class)
+                    st.session_state.result = {"food":new_class,"confidence":1.0,"alt":None,"manual":True,"nutrition":new_nutri}
+                    if st.session_state.history:
+                        st.session_state.history[0].update({
+                            "display":DISPLAY_NAMES[new_class],"emoji":FOOD_EMOJI.get(new_class,"🍽️"),
+                            "kalori":new_nutri["kalori"],"kal_min":new_nutri["kal_min"],"kal_max":new_nutri["kal_max"],
+                            "porsi_g":new_nutri["porsi_g"],"karbo":new_nutri["karbo"],"protein":new_nutri["protein"],"lemak":new_nutri["lemak"],
+                        })
+                    st.rerun()
+
+                st.markdown("<div class='ks-disclaimer'><span>ℹ️</span><span>Nilai kalori & nutrisi adalah <b>estimasi</b> berdasarkan rentang umum per porsi (TKPI Kemenkes RI). Nilai aktual bervariasi tergantung resep, ukuran porsi, dan cara memasak.</span></div>", unsafe_allow_html=True)
 
         elif img:
             st.markdown("<div class='ks-empty'><div class='ks-empty-icon'>👆</div><div class='ks-empty-title'>Tekan \"Analisis Sekarang\"</div><div class='ks-empty-sub'>untuk melihat estimasi kalori & gizi</div></div>", unsafe_allow_html=True)
