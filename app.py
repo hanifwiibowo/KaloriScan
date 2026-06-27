@@ -1,21 +1,21 @@
 import streamlit as st
 import numpy as np
 import random
-import json
 import os
 import time
 from PIL import Image
-import io
 
 # ── Page config ────────────────────────────────────────────
 st.set_page_config(
-    page_title="NutriSnap ID",
-    page_icon="🍛",
+    page_title="UKM - Ukur Kalori Makanan",
+    page_icon="🍽️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 # ── Load TensorFlow (lazy, agar tidak crash saat belum ada model) ──
+PRIORITY_MODELS = ["SimpleCNN", "MobileNetV2", "EfficientNetB0"]
+
 @st.cache_resource
 def load_models():
     try:
@@ -30,7 +30,7 @@ def load_models():
             if os.path.exists(path):
                 models[name] = tf.keras.models.load_model(path)
         return models, tf
-    except Exception as e:
+    except Exception:
         return {}, None
 
 # ── Konfigurasi kelas & nutrisi ────────────────────────────
@@ -97,78 +97,90 @@ def preprocess_image(img: Image.Image, size: tuple):
     arr = np.array(img, dtype=np.float32) / 255.0
     return np.expand_dims(arr, axis=0)
 
-def predict(model, img_array, tf_module):
-    start = time.time()
+def predict(model, img_array):
     preds = model.predict(img_array, verbose=0)
-    elapsed = (time.time() - start) * 1000
     idx = int(np.argmax(preds[0]))
-    return CLASS_NAMES[idx], float(preds[0][idx]), preds[0], elapsed
+    return CLASS_NAMES[idx], float(preds[0][idx]), preds[0]
+
+def confidence_badge(conf):
+    if conf >= 0.75:
+        return "Yakin", "#7ed957"
+    elif conf >= 0.5:
+        return "Cukup yakin", "#ffc857"
+    else:
+        return "Kurang yakin", "#ff8c5a"
 
 # ── Custom CSS ──────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
 
 html, body, [class*="css"] { font-family: 'Plus Jakarta Sans', sans-serif; }
 
 /* Sidebar */
 [data-testid="stSidebar"] {
-    background: linear-gradient(160deg, #0f2027, #203a43, #2c5364);
+    background: linear-gradient(160deg, #1a120d, #241a14, #2e1d15);
 }
-[data-testid="stSidebar"] * { color: #e8f4f8 !important; }
-[data-testid="stSidebar"] .stSelectbox label,
-[data-testid="stSidebar"] .stRadio label { color: #a8d8ea !important; font-size: 0.82rem; }
+[data-testid="stSidebar"] * { color: #f0ddd0 !important; }
 
 /* Hero banner */
 .hero {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    background: linear-gradient(135deg, #2a1810 0%, #3d2015 50%, #1f1209 100%);
     border-radius: 20px;
-    padding: 2.5rem 3rem;
+    padding: 2.4rem 2.8rem;
     margin-bottom: 1.5rem;
-    border: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.06);
 }
-.hero h1 { 
-    font-size: 2.6rem; font-weight: 800; 
-    background: linear-gradient(90deg, #e2b96f, #f7d794, #e2b96f);
+.hero h1 {
+    font-size: 2.5rem; font-weight: 800;
+    background: linear-gradient(90deg, #ff9466, #ffcf94, #ff9466);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     margin: 0; letter-spacing: -0.5px;
 }
-.hero p { color: #8aa6c1; font-size: 1rem; margin: 0.5rem 0 0; }
+.hero .hero-sub { color: #ffb088; font-size: 1.05rem; font-weight: 700; margin: 0.35rem 0 0; }
+.hero .hero-desc { color: #c9a695; font-size: 0.92rem; margin: 0.4rem 0 0; }
 
 /* Upload area */
 [data-testid="stFileUploader"] {
-    border: 2px dashed #2d6a8f !important;
+    border: 2px dashed #ff7a47 !important;
     border-radius: 16px !important;
-    background: rgba(45, 106, 143, 0.06) !important;
+    background: rgba(255, 122, 71, 0.06) !important;
     padding: 1rem !important;
 }
 
-/* Result cards */
+/* Result card */
 .result-card {
-    background: linear-gradient(135deg, #1e3a5f, #0d2137);
-    border: 1px solid rgba(226, 185, 111, 0.25);
+    background: linear-gradient(135deg, #2e1d15, #1c120c);
+    border: 1px solid rgba(255, 148, 102, 0.25);
     border-radius: 16px;
     padding: 1.4rem 1.6rem;
     margin-bottom: 1rem;
 }
+.confidence-badge {
+    display: inline-block;
+    border-radius: 8px;
+    padding: 3px 10px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    border: 1px solid;
+}
 .food-name {
     font-size: 1.9rem; font-weight: 800;
-    color: #f7d794; margin: 0; letter-spacing: -0.3px;
+    color: #ffcf94; margin: 0.5rem 0 0; letter-spacing: -0.3px;
 }
-.confidence-text { color: #8aa6c1; font-size: 0.85rem; margin-top: 0.2rem; }
 
 /* Kalori badge */
 .kalori-badge {
-    background: linear-gradient(135deg, #e2b96f, #f7d794);
-    color: #1a1a2e;
+    background: linear-gradient(135deg, #ff7a47, #ffb088);
+    color: #241208;
     border-radius: 12px;
     padding: 1rem 1.5rem;
     text-align: center;
     margin: 1rem 0;
 }
 .kalori-badge .number { font-size: 2.4rem; font-weight: 800; line-height: 1; }
-.kalori-badge .label  { font-size: 0.78rem; font-weight: 600; opacity: 0.75; margin-top: 2px; }
-.kalori-badge .range  { font-size: 0.75rem; opacity: 0.65; margin-top: 4px; font-family: 'DM Mono', monospace; }
+.kalori-badge .label  { font-size: 0.78rem; font-weight: 700; opacity: 0.8; margin-top: 2px; }
+.kalori-badge .range  { font-size: 0.75rem; opacity: 0.7; margin-top: 4px; }
 
 /* Macro pills */
 .macro-row { display: flex; gap: 0.6rem; margin-top: 0.8rem; }
@@ -177,128 +189,119 @@ html, body, [class*="css"] { font-family: 'Plus Jakarta Sans', sans-serif; }
     text-align: center; font-size: 0.78rem;
 }
 .pill-karbo   { background: rgba(99, 179, 237, 0.15); border: 1px solid rgba(99, 179, 237, 0.3); color: #63b3ed; }
-.pill-protein { background: rgba(104, 211, 145, 0.15); border: 1px solid rgba(104, 211, 145, 0.3); color: #68d391; }
-.pill-lemak   { background: rgba(252, 129, 74, 0.15);  border: 1px solid rgba(252, 129, 74, 0.3);  color: #fc814a; }
+.pill-protein { background: rgba(126, 217, 87, 0.15); border: 1px solid rgba(126, 217, 87, 0.3); color: #7ed957; }
+.pill-lemak   { background: rgba(255, 140, 90, 0.15); border: 1px solid rgba(255, 140, 90, 0.3); color: #ff8c5a; }
 .macro-pill .macro-val { font-size: 1.1rem; font-weight: 700; display: block; }
 
-/* Top-5 bar */
-.top5-row { display: flex; align-items: center; gap: 0.6rem; margin: 0.35rem 0; }
-.top5-label { font-size: 0.78rem; color: #8aa6c1; width: 110px; flex-shrink: 0; text-align: right; }
-.top5-bar-wrap { flex: 1; background: rgba(255,255,255,0.06); border-radius: 6px; height: 10px; overflow: hidden; }
-.top5-bar-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, #2d6a8f, #e2b96f); }
-.top5-pct { font-size: 0.76rem; color: #a0b4c8; font-family: 'DM Mono', monospace; width: 42px; }
+/* Alternative suggestion hint */
+.alt-hint {
+    background: rgba(255, 200, 87, 0.08);
+    border-left: 3px solid #ffc857;
+    border-radius: 0 8px 8px 0;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.82rem; color: #ffc857;
+    margin: 0.8rem 0;
+}
 
 /* History card */
 .hist-card {
     background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.06);
     border-radius: 12px;
     padding: 0.8rem 1rem;
     margin-bottom: 0.5rem;
     display: flex; align-items: center; gap: 0.8rem;
 }
-.hist-food { font-weight: 700; color: #f7d794; font-size: 0.9rem; }
-.hist-meta { color: #6b8fa8; font-size: 0.75rem; font-family: 'DM Mono', monospace; }
+.hist-food { font-weight: 700; color: #ffcf94; font-size: 0.9rem; }
+.hist-meta { color: #a98a78; font-size: 0.75rem; }
 
 /* Disclaimer */
 .disclaimer {
-    background: rgba(226, 185, 111, 0.08);
-    border-left: 3px solid #e2b96f;
+    background: rgba(255, 122, 71, 0.08);
+    border-left: 3px solid #ff7a47;
     border-radius: 0 8px 8px 0;
     padding: 0.6rem 0.9rem;
-    font-size: 0.75rem; color: #a8956a;
+    font-size: 0.75rem; color: #c9a695;
     margin-top: 1rem;
 }
 
-/* Model badge */
-.model-badge {
-    display: inline-block;
-    background: rgba(45, 106, 143, 0.3);
-    border: 1px solid #2d6a8f;
-    border-radius: 6px;
-    padding: 2px 10px;
-    font-size: 0.72rem;
-    color: #7ec8e3;
-    font-family: 'DM Mono', monospace;
-    margin-bottom: 0.5rem;
-}
-
-/* Demo mode notice */
+/* Maintenance notice */
 .demo-notice {
-    background: rgba(252, 129, 74, 0.1);
-    border: 1px solid rgba(252, 129, 74, 0.3);
+    background: rgba(255, 140, 90, 0.1);
+    border: 1px solid rgba(255, 140, 90, 0.3);
     border-radius: 10px;
     padding: 0.8rem 1rem;
     font-size: 0.82rem;
-    color: #fc814a;
+    color: #ff8c5a;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # ── Sidebar ─────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("### 🍛 NutriSnap ID")
-    st.markdown("---")
-    
-    st.markdown("**Pilih Model AI**")
-    selected_model = st.radio(
-        "", ["SimpleCNN", "MobileNetV2", "EfficientNetB0"],
-        index=0,
-        help="SimpleCNN: akurasi tertinggi | MobileNetV2: cepat | EfficientNetB0: eksperimen"
-    )
-    
-    model_info = {
-        "SimpleCNN"     : ("79.14%", "~101 ms", "10.9 MB"),
-        "MobileNetV2"   : ("73.05%", "~117 ms", "22.6 MB"),
-        "EfficientNetB0": ("12.24%", "~125 ms", "37.4 MB"),
-    }
-    acc, inf, size = model_info[selected_model]
-    st.markdown(f"""
-    <div style='background:rgba(255,255,255,0.05);border-radius:10px;padding:0.8rem;margin-top:0.5rem;font-size:0.78rem;'>
-        <div>🎯 Akurasi: <b style='color:#f7d794'>{acc}</b></div>
-        <div>⚡ Inferensi: <b style='color:#f7d794'>{inf}</b></div>
-        <div>💾 Ukuran: <b style='color:#f7d794'>{size}</b></div>
+    st.markdown("""
+    <div style='text-align:center; padding: 0.4rem 0 1rem;'>
+        <div style='font-size:2.3rem; line-height:1;'>🍽️</div>
+        <div style='font-size:1.5rem; font-weight:800; color:#ffb088; letter-spacing:0.5px; margin-top:0.3rem;'>UKM</div>
+        <div style='font-size:0.76rem; color:#c9a695; margin-top:0.1rem;'>Ukur Kalori Makanan</div>
     </div>
     """, unsafe_allow_html=True)
-    
     st.markdown("---")
-    st.markdown("**13 Kelas Makanan**")
-    for name in DISPLAY_NAMES.values():
-        st.markdown(f"<span style='font-size:0.78rem;color:#6b8fa8'>• {name}</span>", unsafe_allow_html=True)
-    
+    st.markdown("**Cara pakai**")
+    st.markdown("""
+    <div style='font-size:0.8rem; color:#d8b8a8; line-height:1.7;'>
+    1. Upload foto makananmu<br>
+    2. Tekan <b>Cek Sekarang</b><br>
+    3. Lihat estimasi kalori & gizinya
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown("---")
-    st.markdown("<span style='font-size:0.72rem;color:#4a6a7a'>Dikembangkan untuk EAS Machine Learning<br>Data nutrisi: TKPI Kemenkes RI</span>", unsafe_allow_html=True)
+    with st.expander("🍱 Makanan yang bisa dikenali"):
+        names = list(DISPLAY_NAMES.values())
+        cols = st.columns(2)
+        for i, name in enumerate(names):
+            with cols[i % 2]:
+                st.markdown(f"<div style='font-size:0.78rem; color:#e0c4b4; padding:2px 0;'>• {name}</div>", unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown(
+        "<div style='font-size:0.7rem; color:#8a6d60;'>Estimasi nutrisi mengacu pada data TKPI — Kemenkes RI</div>",
+        unsafe_allow_html=True
+    )
 
 # ── Main content ────────────────────────────────────────────
 st.markdown("""
 <div class='hero'>
-    <h1>🍛 NutriSnap ID</h1>
-    <p>Klasifikasi makanan Indonesia & estimasi kalori otomatis berbasis CNN</p>
+    <h1>🍽️ UKM</h1>
+    <p class='hero-sub'>Ukur Kalori Makanan</p>
+    <p class='hero-desc'>Foto makananmu, langsung tahu perkiraan kalori &amp; gizinya.</p>
 </div>
 """, unsafe_allow_html=True)
 
 # Load models
 models, tf_module = load_models()
-demo_mode = len(models) == 0
+active_model = next((m for m in PRIORITY_MODELS if m in models), None)
+demo_mode = active_model is None
 
 if demo_mode:
     st.markdown("""
     <div class='demo-notice'>
-        ⚠️ <b>Mode Demo</b> — File model (.keras) belum ditemukan di folder <code>models/</code>.
-        Upload model hasil training notebook ke folder <code>models/</code> untuk prediksi nyata.
-        Saat ini aplikasi menggunakan <b>simulasi prediksi</b>.
+        🔧 Sistem sedang pemanasan. Coba upload ulang foto kamu dalam beberapa saat.
     </div>
     """, unsafe_allow_html=True)
     st.markdown("")
 
 # Tabs
-tab1, tab2 = st.tabs(["📸 Klasifikasi", "📋 Riwayat Analisis"])
+tab1, tab2 = st.tabs(["📸 Cek Kalori", "🕒 Riwayat"])
 
 # ── Session state ───────────────────────────────────────────
 if "history" not in st.session_state:
     st.session_state.history = []
+if "result" not in st.session_state:
+    st.session_state.result = None
+if "current_upload_id" not in st.session_state:
+    st.session_state.current_upload_id = None
 
-# ── Tab 1: Klasifikasi ──────────────────────────────────────
+# ── Tab 1: Cek Kalori ────────────────────────────────────────
 with tab1:
     col_upload, col_result = st.columns([1, 1], gap="large")
 
@@ -311,61 +314,72 @@ with tab1:
         )
 
         if uploaded:
+            upload_id = f"{uploaded.name}-{uploaded.size}"
+            if st.session_state.current_upload_id != upload_id:
+                st.session_state.current_upload_id = upload_id
+                st.session_state.result = None
+
             img = Image.open(uploaded)
-            st.image(img, caption="Gambar yang diupload", use_container_width=True)
-            
-            analyze_btn = st.button("🔍 Analisis Sekarang", use_container_width=True, type="primary")
+            st.image(img, caption="Foto kamu", use_container_width=True)
+            analyze_btn = st.button("🔍 Cek Sekarang", use_container_width=True, type="primary")
         else:
             st.markdown("""
-            <div style='text-align:center;padding:3rem 1rem;color:#4a6a7a;'>
+            <div style='text-align:center;padding:3rem 1rem;color:#8a6d60;'>
                 <div style='font-size:3rem'>📷</div>
                 <div style='font-size:0.85rem;margin-top:0.5rem'>Upload foto makanan untuk memulai</div>
-                <div style='font-size:0.75rem;margin-top:0.3rem;color:#3a5a6a'>JPG, PNG, WEBP didukung</div>
+                <div style='font-size:0.75rem;margin-top:0.3rem;color:#6a4f44'>JPG, PNG, WEBP didukung</div>
             </div>
             """, unsafe_allow_html=True)
             analyze_btn = False
 
     with col_result:
-        st.markdown("#### Hasil Analisis")
+        st.markdown("#### Hasil")
 
         if uploaded and analyze_btn:
-            with st.spinner("Menganalisis gambar..."):
-                time.sleep(0.5)  # UX pause
+            with st.spinner("Menganalisis foto..."):
+                time.sleep(0.4)
 
-                if not demo_mode and selected_model in models:
-                    # Real prediction
-                    size = IMG_SIZE[selected_model]
+                if not demo_mode:
+                    size = IMG_SIZE[active_model]
                     arr  = preprocess_image(img, size)
-                    food_class, confidence, all_preds, inf_time = predict(
-                        models[selected_model], arr, tf_module
-                    )
-                    top5_idx   = np.argsort(all_preds)[::-1][:5]
-                    top5_names = [CLASS_NAMES[i] for i in top5_idx]
-                    top5_probs = all_preds[top5_idx]
+                    food_class, confidence, all_preds = predict(models[active_model], arr)
+                    alt_idx   = np.argsort(all_preds)[::-1][1]
+                    alt_class = CLASS_NAMES[alt_idx]
                 else:
-                    # Demo mode: simulasi
-                    food_class  = random.choice(CLASS_NAMES)
-                    confidence  = random.uniform(0.55, 0.99)
-                    inf_time    = random.uniform(90, 130)
-                    top5_idx    = random.sample(range(13), 5)
-                    top5_names  = [CLASS_NAMES[i] for i in top5_idx]
-                    remaining   = 1.0
-                    top5_probs  = []
-                    for i in range(5):
-                        v = confidence if i == 0 else random.uniform(0.01, remaining * 0.4)
-                        top5_probs.append(v)
-                        remaining -= v
-                    top5_probs = np.array(top5_probs)
-                    top5_names[0] = food_class
+                    food_class = random.choice(CLASS_NAMES)
+                    confidence = random.uniform(0.55, 0.97)
+                    alt_class  = random.choice([c for c in CLASS_NAMES if c != food_class])
 
-                nutrition = estimate_nutrition(food_class)
+            st.session_state.result = {
+                "food": food_class, "confidence": confidence,
+                "alt": alt_class, "manual": False,
+            }
+            nutrition = estimate_nutrition(food_class)
+            st.session_state.history.insert(0, {
+                "display" : DISPLAY_NAMES[food_class],
+                "kalori"  : nutrition["kalori"] if nutrition else "-",
+                "kal_min" : nutrition["kal_min"] if nutrition else "-",
+                "kal_max" : nutrition["kal_max"] if nutrition else "-",
+                "porsi_g" : nutrition["porsi_g"] if nutrition else "-",
+            })
 
-            # ── Hasil ───────────────────────────────────────
+        result = st.session_state.result
+
+        if result:
+            food_class = result["food"]
+            confidence = result["confidence"]
+            manual     = result.get("manual", False)
+            nutrition  = estimate_nutrition(food_class)
+
+            if manual:
+                label, color = "Dipilih manual", "#a98a78"
+            else:
+                label, color = confidence_badge(confidence)
+
             st.markdown(f"""
             <div class='result-card'>
-                <div class='model-badge'>{selected_model} {'(demo)' if demo_mode else ''}</div>
+                <div class='confidence-badge' style='color:{color};border-color:{color}55;background:{color}1A;'>{label}</div>
                 <div class='food-name'>{DISPLAY_NAMES[food_class]}</div>
-                <div class='confidence-text'>Confidence: <b style='color:#f7d794'>{confidence*100:.1f}%</b> &nbsp;·&nbsp; Inferensi: {inf_time:.0f} ms</div>
             </div>
             """, unsafe_allow_html=True)
 
@@ -389,19 +403,37 @@ with tab1:
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Top-5
-            st.markdown("**Top-5 Prediksi**")
-            for name, prob in zip(top5_names, top5_probs):
-                pct = float(prob) * 100
+            if not manual and result.get("alt") and confidence < 0.55:
+                alt_display = DISPLAY_NAMES.get(result["alt"], result["alt"])
                 st.markdown(f"""
-                <div class='top5-row'>
-                    <div class='top5-label'>{DISPLAY_NAMES.get(name, name)}</div>
-                    <div class='top5-bar-wrap'>
-                        <div class='top5-bar-fill' style='width:{min(pct,100):.1f}%'></div>
-                    </div>
-                    <div class='top5-pct'>{pct:.1f}%</div>
-                </div>
+                <div class='alt-hint'>🤔 Hasilnya kurang yakin — mungkin juga ini <b>{alt_display}</b>?</div>
                 """, unsafe_allow_html=True)
+
+            override_options = ["Sudah benar, lanjutkan"] + [
+                n for k, n in DISPLAY_NAMES.items() if k != food_class
+            ]
+            picked = st.selectbox(
+                "Bukan ini? Pilih yang benar:",
+                override_options,
+                key=f"override_select_{food_class}_{manual}"
+            )
+            if picked != "Sudah benar, lanjutkan":
+                reverse = {v: k for k, v in DISPLAY_NAMES.items()}
+                new_class = reverse[picked]
+                st.session_state.result = {
+                    "food": new_class, "confidence": 1.0,
+                    "alt": None, "manual": True,
+                }
+                if st.session_state.history:
+                    new_nutri = estimate_nutrition(new_class)
+                    st.session_state.history[0].update({
+                        "display": DISPLAY_NAMES[new_class],
+                        "kalori" : new_nutri["kalori"],
+                        "kal_min": new_nutri["kal_min"],
+                        "kal_max": new_nutri["kal_max"],
+                        "porsi_g": new_nutri["porsi_g"],
+                    })
+                st.rerun()
 
             st.markdown("""
             <div class='disclaimer'>
@@ -410,34 +442,29 @@ with tab1:
             </div>
             """, unsafe_allow_html=True)
 
-            # Simpan ke history
-            st.session_state.history.insert(0, {
-                "food"      : food_class,
-                "display"   : DISPLAY_NAMES[food_class],
-                "confidence": confidence,
-                "kalori"    : nutrition["kalori"] if nutrition else "-",
-                "kal_min"   : nutrition["kal_min"] if nutrition else "-",
-                "kal_max"   : nutrition["kal_max"] if nutrition else "-",
-                "model"     : selected_model,
-                "porsi_g"   : nutrition["porsi_g"] if nutrition else "-",
-            })
-
-        elif not uploaded:
+        elif uploaded:
             st.markdown("""
-            <div style='text-align:center;padding:3rem 1rem;color:#4a6a7a;'>
+            <div style='text-align:center;padding:3rem 1rem;color:#8a6d60;'>
+                <div style='font-size:2.5rem'>👉</div>
+                <div style='font-size:0.85rem;margin-top:0.5rem'>Tekan "Cek Sekarang" untuk melihat hasilnya</div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div style='text-align:center;padding:3rem 1rem;color:#8a6d60;'>
                 <div style='font-size:2.5rem'>🔍</div>
-                <div style='font-size:0.85rem;margin-top:0.5rem'>Hasil analisis akan muncul di sini</div>
+                <div style='font-size:0.85rem;margin-top:0.5rem'>Hasil cek kalori akan muncul di sini</div>
             </div>
             """, unsafe_allow_html=True)
 
 # ── Tab 2: Riwayat ──────────────────────────────────────────
 with tab2:
-    st.markdown("#### 📋 Riwayat Analisis")
+    st.markdown("#### 🕒 Riwayat")
     if not st.session_state.history:
         st.markdown("""
-        <div style='text-align:center;padding:3rem;color:#4a6a7a;'>
+        <div style='text-align:center;padding:3rem;color:#8a6d60;'>
             <div style='font-size:2rem'>📭</div>
-            <div style='font-size:0.85rem;margin-top:0.5rem'>Belum ada riwayat analisis</div>
+            <div style='font-size:0.85rem;margin-top:0.5rem'>Belum ada riwayat. Yuk cek makananmu dulu!</div>
         </div>
         """, unsafe_allow_html=True)
     else:
@@ -445,27 +472,25 @@ with tab2:
         with col_clear:
             if st.button("🗑️ Hapus Semua", use_container_width=True):
                 st.session_state.history = []
+                st.session_state.result = None
                 st.rerun()
 
         total_kal = sum(h["kalori"] for h in st.session_state.history if isinstance(h["kalori"], int))
         st.markdown(f"""
-        <div style='background:rgba(226,185,111,0.1);border-radius:12px;padding:1rem 1.4rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;'>
-            <div style='color:#8aa6c1;font-size:0.85rem'>{len(st.session_state.history)} item dianalisis sesi ini</div>
-            <div style='color:#f7d794;font-weight:700;font-size:1.1rem'>~{total_kal} kkal total</div>
+        <div style='background:rgba(255,122,71,0.1);border-radius:12px;padding:1rem 1.4rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;'>
+            <div style='color:#c9a695;font-size:0.85rem'>{len(st.session_state.history)} item dicek hari ini</div>
+            <div style='color:#ffcf94;font-weight:700;font-size:1.1rem'>~{total_kal} kkal total</div>
         </div>
         """, unsafe_allow_html=True)
 
-        for i, h in enumerate(st.session_state.history):
+        for h in st.session_state.history:
             st.markdown(f"""
             <div class='hist-card'>
                 <div style='font-size:1.4rem'>🍽️</div>
                 <div style='flex:1'>
                     <div class='hist-food'>{h['display']}</div>
                     <div class='hist-meta'>
-                        ~{h['kalori']} kkal ({h['kal_min']}–{h['kal_max']}) &nbsp;·&nbsp;
-                        porsi {h['porsi_g']}g &nbsp;·&nbsp;
-                        {h['model']} &nbsp;·&nbsp;
-                        confidence {h['confidence']*100:.1f}%
+                        ~{h['kalori']} kkal ({h['kal_min']}–{h['kal_max']}) &nbsp;·&nbsp; porsi {h['porsi_g']}g
                     </div>
                 </div>
             </div>
