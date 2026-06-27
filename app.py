@@ -318,6 +318,11 @@ div[data-baseweb="popover"] li:hover { background: #f0fdf4 !important; }
 </style>
 """, unsafe_allow_html=True)
 
+# ── Session state ─────────────────────────────────────────────
+for key, val in [("history",[]),("result",None),("current_upload_id",None),("input_mode","upload"),("target_kal",2000),("target_kal_input",2000)]:
+    if key not in st.session_state:
+        st.session_state[key] = val
+
 # ── Sidebar ──────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
@@ -349,7 +354,7 @@ with st.sidebar:
         key="target_kal_input",
         on_change=lambda: st.session_state.update({"target_kal": st.session_state["target_kal_input"]})
     )
-    target_kal = st.session_state["target_kal"]
+    target_kal = st.session_state.get("target_kal", 2000)
     st.markdown("""
     <div style='background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:0.55rem 0.75rem;margin-top:0.4rem;font-size:0.74rem;color:#92400e;line-height:1.5;'>
         💡 Belum tahu target kalorimu?<br>
@@ -388,11 +393,6 @@ if demo_mode:
         🔧 <span><b>Mode Demo Aktif</b> — Model AI belum terhubung. Prediksi bersifat simulasi acak.</span>
     </div>
     """, unsafe_allow_html=True)
-
-# ── Session state ─────────────────────────────────────────────
-for key, val in [("history",[]),("result",None),("current_upload_id",None),("input_mode","upload"),("target_kal",2000),("target_kal_input",2000)]:
-    if key not in st.session_state:
-        st.session_state[key] = val
 
 # ── Tabs ──────────────────────────────────────────────────────
 tab1, tab2, tab3 = st.tabs(["📸  Cek Kalori", "📋  Riwayat & Grafik", "⚖️  Kalkulator BMI"])
