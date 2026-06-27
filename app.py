@@ -288,11 +288,15 @@ header[data-testid="stHeader"] { background: transparent; }
 [data-testid="stNumberInput"] input,
 [data-testid="stTextInput"] input,
 div[data-baseweb="select"] > div,
-div[data-baseweb="input"] > div {
+div[data-baseweb="input"] > div,
+[data-testid="stNumberInput"] > div,
+[data-testid="stNumberInput"] > div > div {
     background-color: #ffffff !important;
     color: #1a3a2a !important;
     border: 1.5px solid #d1fae5 !important;
     border-radius: 10px !important;
+    outline: none !important;
+    box-shadow: none !important;
 }
 div[data-baseweb="select"] > div:focus-within,
 div[data-baseweb="input"] > div:focus-within {
@@ -662,10 +666,10 @@ with tab2:
         ))
         fig_bar.update_layout(
             title=dict(text="Kalori per Makanan", font_size=14, font_color="#14532d"),
-            yaxis_title="kkal", xaxis_tickangle=-20,
+            xaxis_tickangle=-20,
             margin=dict(t=40,b=60,l=40,r=20), height=300,
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            yaxis=dict(gridcolor="#e5e7eb", tickfont=dict(color="#374151")),
+            yaxis=dict(title="kkal", title_font=dict(color="#374151"), gridcolor="#e5e7eb", tickfont=dict(color="#374151")),
             xaxis=dict(tickfont=dict(color="#374151")),
         )
         st.plotly_chart(fig_bar, use_container_width=True)
@@ -686,9 +690,9 @@ with tab2:
         ))
         fig_makro.update_layout(
             title=dict(text="Total Makronutrien Hari Ini", font_size=14, font_color="#14532d"),
-            yaxis_title="gram", margin=dict(t=40,b=20,l=40,r=20), height=260,
+            margin=dict(t=40,b=20,l=40,r=20), height=260,
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            yaxis=dict(gridcolor="#e5e7eb", tickfont=dict(color="#374151")),
+            yaxis=dict(title="gram", title_font=dict(color="#374151"), gridcolor="#e5e7eb", tickfont=dict(color="#374151")),
             xaxis=dict(tickfont=dict(color="#374151")),
         )
         st.plotly_chart(fig_makro, use_container_width=True)
@@ -797,11 +801,15 @@ with tab3:
             </div>
             """, unsafe_allow_html=True)
 
-            # Tombol set sebagai target
-            if st.button(f"🎯 Pakai {kebutuhan:.0f} kkal sebagai target harian", use_container_width=True):
-                st.session_state["target_kal"] = int(kebutuhan)
-                st.success(f"✅ Target kalori diset ke {kebutuhan:.0f} kkal/hari! Sidebar kiri sudah diperbarui.")
-                st.rerun()
+            # Info insight — user input manual di sidebar
+            st.markdown(f"""
+            <div style='background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;
+                        padding:0.65rem 1rem;margin-top:0.5rem;font-size:0.82rem;color:#14532d;
+                        display:flex;align-items:center;gap:0.5rem;'>
+                💡 Kebutuhan kalori harianmu sekitar <b>{kebutuhan:.0f} kkal</b>.
+                Masukkan angka ini secara manual ke <b>Target Kalori Harian</b> di sidebar kiri.
+            </div>
+            """, unsafe_allow_html=True)
         else:
             st.markdown("""
             <div class='ks-empty'>
