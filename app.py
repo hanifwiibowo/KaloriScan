@@ -319,7 +319,7 @@ div[data-baseweb="popover"] li:hover { background: #f0fdf4 !important; }
 """, unsafe_allow_html=True)
 
 # ── Session state ─────────────────────────────────────────────
-for key, val in [("history",[]),("result",None),("current_upload_id",None),("input_mode","upload"),("target_kal",2000),("target_kal_input",2000)]:
+for key, val in [("history",[]),("result",None),("current_upload_id",None),("input_mode","upload"),("target_kal",2000)]:
     if key not in st.session_state:
         st.session_state[key] = val
 
@@ -349,12 +349,13 @@ with st.sidebar:
     target_kal = st.number_input(
         "kkal/hari",
         min_value=1000, max_value=5000,
+        value=st.session_state["target_kal"],
         step=50,
         label_visibility="collapsed",
-        key="target_kal_input",
-        on_change=lambda: st.session_state.update({"target_kal": st.session_state["target_kal_input"]})
     )
-    target_kal = st.session_state.get("target_kal", 2000)
+    # Hanya update jika user mengubah manual di sidebar (bukan dari BMI)
+    if target_kal != st.session_state["target_kal"]:
+        st.session_state["target_kal"] = target_kal
     st.markdown("""
     <div style='background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:0.55rem 0.75rem;margin-top:0.4rem;font-size:0.74rem;color:#92400e;line-height:1.5;'>
         💡 Belum tahu target kalorimu?<br>
@@ -792,7 +793,6 @@ with tab3:
             # Tombol set sebagai target
             if st.button(f"🎯 Pakai {kebutuhan:.0f} kkal sebagai target harian", use_container_width=True):
                 st.session_state["target_kal"] = int(kebutuhan)
-                st.session_state["target_kal_input"] = int(kebutuhan)
                 st.success(f"✅ Target kalori diset ke {kebutuhan:.0f} kkal/hari! Sidebar kiri sudah diperbarui.")
                 st.rerun()
         else:
