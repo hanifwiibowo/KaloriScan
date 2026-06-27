@@ -160,7 +160,7 @@ header[data-testid="stHeader"] { background: transparent; }
 }
 .ks-section-label {
     font-size:0.72rem; font-weight:700; text-transform:uppercase;
-    letter-spacing:0.1em; color:#6b7280; margin-bottom:0.6rem;
+    letter-spacing:0.1em; color:#374151; margin-bottom:0.6rem;
 }
 
 [data-testid="stFileUploader"] {
@@ -177,7 +177,7 @@ header[data-testid="stHeader"] { background: transparent; }
 .ks-conf-badge { display:inline-block; border-radius:20px; padding:4px 12px; font-size:0.72rem; font-weight:700; }
 .ks-food-emoji { font-size:2.8rem; line-height:1; margin-bottom:0.3rem; display:block; }
 .ks-food-name { font-size:1.8rem; font-weight:800; color:#14532d; letter-spacing:-0.5px; line-height:1.1; }
-.ks-food-sub { font-size:0.82rem; color:#6b7280; margin-top:4px; }
+.ks-food-sub { font-size:0.82rem; color:#4b5563; margin-top:4px; }
 
 .ks-calorie-card {
     background:linear-gradient(135deg,#16a34a 0%,#15803d 100%);
@@ -207,12 +207,12 @@ header[data-testid="stHeader"] { background: transparent; }
 }
 .ks-disclaimer {
     background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px;
-    padding:0.65rem 0.9rem; font-size:0.74rem; color:#6b7280; margin-top:1rem;
+    padding:0.65rem 0.9rem; font-size:0.74rem; color:#374151; margin-top:1rem;
     display:flex; align-items:flex-start; gap:6px;
 }
-.ks-empty { text-align:center; padding:3rem 1rem; color:#9ca3af; }
+.ks-empty { text-align:center; padding:3rem 1rem; color:#6b7280; }
 .ks-empty-icon { font-size:3rem; margin-bottom:0.6rem; }
-.ks-empty-title { font-size:0.9rem; font-weight:600; color:#6b7280; }
+.ks-empty-title { font-size:0.9rem; font-weight:600; color:#374151; }
 .ks-empty-sub { font-size:0.78rem; margin-top:0.3rem; }
 
 .ks-hist-card {
@@ -222,7 +222,7 @@ header[data-testid="stHeader"] { background: transparent; }
 }
 .ks-hist-emoji { font-size:1.6rem; }
 .ks-hist-food { font-weight:700; color:#14532d; font-size:0.92rem; }
-.ks-hist-meta { color:#6b7280; font-size:0.75rem; margin-top:2px; }
+.ks-hist-meta { color:#4b5563; font-size:0.75rem; margin-top:2px; }
 .ks-hist-cal { font-weight:800; color:#16a34a; font-size:1rem; margin-left:auto; }
 
 .ks-total-banner {
@@ -230,7 +230,7 @@ header[data-testid="stHeader"] { background: transparent; }
     border:1px solid #a7f3d0; border-radius:14px; padding:1rem 1.4rem;
     margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;
 }
-.ks-total-label { color:#6b7280; font-size:0.82rem; font-weight:500; }
+.ks-total-label { color:#374151; font-size:0.82rem; font-weight:500; }
 .ks-total-count { color:#374151; font-size:0.82rem; }
 .ks-total-kal { color:#15803d; font-weight:800; font-size:1.15rem; }
 
@@ -253,13 +253,13 @@ header[data-testid="stHeader"] { background: transparent; }
 }
 .ks-bmi-number { font-size:3rem; font-weight:900; line-height:1; }
 .ks-bmi-label { font-size:0.85rem; font-weight:600; margin-top:0.3rem; }
-.ks-bmi-sub { font-size:0.75rem; color:#6b7280; margin-top:0.2rem; }
+.ks-bmi-sub { font-size:0.75rem; color:#4b5563; margin-top:0.2rem; }
 
 /* Sidebar */
 .ks-sidebar-logo { text-align:center; padding:1rem 0 0.8rem; }
 .ks-sidebar-logo .logo-icon { font-size:2.4rem; }
 .ks-sidebar-logo .logo-name { font-size:1.4rem; font-weight:900; color:#15803d !important; letter-spacing:-0.5px; margin-top:0.2rem; }
-.ks-sidebar-logo .logo-sub { font-size:0.72rem; color:#6b7280 !important; font-weight:500; }
+.ks-sidebar-logo .logo-sub { font-size:0.72rem; color:#374151 !important; font-weight:500; }
 .ks-step-item { display:flex; align-items:flex-start; gap:0.7rem; padding:0.4rem 0; }
 .ks-step-num { width:22px; height:22px; border-radius:50%; background:#16a34a; color:white !important; font-size:0.7rem; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
 .ks-step-text { font-size:0.82rem; color:#374151 !important; line-height:1.4; }
@@ -622,17 +622,17 @@ with tab2:
             <div style='display:flex;justify-content:space-between;align-items:center;'>
                 <div>
                     <div style='font-weight:700;color:#14532d;font-size:0.9rem;'>Target Kalori Harian</div>
-                    <div style='font-size:0.78rem;color:#6b7280;margin-top:2px;'>{status_text}</div>
+                    <div style='font-size:0.78rem;color:#374151;margin-top:2px;'>{status_text}</div>
                 </div>
                 <div style='text-align:right;'>
                     <div style='font-size:1.5rem;font-weight:900;color:#16a34a;'>~{total_kal}</div>
-                    <div style='font-size:0.72rem;color:#6b7280;'>/ {target_kal} kkal</div>
+                    <div style='font-size:0.72rem;color:#4b5563;'>/ {target_kal} kkal</div>
                 </div>
             </div>
             <div class='ks-progress-bar-bg'>
                 <div class='ks-progress-bar-fill' style='width:{pct_target:.1f}%;background:{bar_color};'></div>
             </div>
-            <div style='font-size:0.72rem;color:#9ca3af;text-align:right;'>{pct_target:.0f}% dari target</div>
+            <div style='font-size:0.72rem;color:#4b5563;text-align:right;'>{pct_target:.0f}% dari target</div>
         </div>
         """, unsafe_allow_html=True)
 
