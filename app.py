@@ -283,6 +283,38 @@ header[data-testid="stHeader"] { background: transparent; }
 .stTabs [data-baseweb="tab"] { border-radius:9px; font-weight:600; font-size:0.88rem; color:#6b7280; padding:0.5rem 1.2rem; }
 .stTabs [aria-selected="true"] { background:linear-gradient(135deg,#16a34a,#15803d) !important; color:white !important; }
 .stSelectbox label { font-size:0.82rem; font-weight:600; color:#374151; }
+
+/* ─── Override dark input fields ─── */
+[data-testid="stNumberInput"] input,
+[data-testid="stTextInput"] input,
+div[data-baseweb="select"] > div,
+div[data-baseweb="input"] > div {
+    background-color: #ffffff !important;
+    color: #1a3a2a !important;
+    border: 1.5px solid #d1fae5 !important;
+    border-radius: 10px !important;
+}
+div[data-baseweb="select"] > div:focus-within,
+div[data-baseweb="input"] > div:focus-within {
+    border-color: #16a34a !important;
+    box-shadow: 0 0 0 3px rgba(22,163,74,0.15) !important;
+}
+div[data-baseweb="select"] svg { color: #16a34a !important; }
+div[data-baseweb="popover"] ul { background: #ffffff !important; }
+div[data-baseweb="popover"] li { color: #1a3a2a !important; }
+div[data-baseweb="popover"] li:hover { background: #f0fdf4 !important; }
+[data-testid="stNumberInput"] button {
+    background: #f0fdf4 !important;
+    border-color: #d1fae5 !important;
+    color: #16a34a !important;
+    border-radius: 8px !important;
+}
+[data-testid="stNumberInput"] button:hover { background: #dcfce7 !important; }
+.stSelectbox > label, [data-testid="stNumberInput"] > label {
+    color: #374151 !important;
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
