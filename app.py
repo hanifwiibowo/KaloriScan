@@ -237,6 +237,42 @@ header[data-testid="stHeader"] { background: transparent; }
     background: rgba(220,252,231,0.9) !important;
 }
 
+/* ─── Camera input ─── */
+[data-testid="stCameraInput"] {
+    border: 2px dashed #86efac !important;
+    border-radius: 18px !important;
+    background: rgba(240,253,244,0.8) !important;
+}
+[data-testid="stCameraInput"] video {
+    border-radius: 14px !important;
+}
+
+/* ─── Mode toggle pills ─── */
+.ks-mode-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1rem;
+    background: #f3f4f6;
+    border-radius: 12px;
+    padding: 4px;
+}
+.ks-mode-btn {
+    flex: 1;
+    text-align: center;
+    padding: 0.5rem 0.8rem;
+    border-radius: 9px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #6b7280;
+}
+.ks-mode-btn.active {
+    background: #ffffff;
+    color: #15803d;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+}
+
 /* ─── Section label ─── */
 .ks-section-label {
     font-size: 0.72rem;
@@ -559,6 +595,8 @@ if "result" not in st.session_state:
     st.session_state.result = None
 if "current_upload_id" not in st.session_state:
     st.session_state.current_upload_id = None
+if "input_mode" not in st.session_state:
+    st.session_state.input_mode = "upload"
 
 # ── Tabs ──────────────────────────────────────────────────────
 tab1, tab2 = st.tabs(["📸  Cek Kalori", "📋  Riwayat Hari Ini"])
@@ -568,36 +606,76 @@ with tab1:
     col_upload, col_result = st.columns([1, 1], gap="large")
 
     with col_upload:
-        st.markdown("<div class='ks-section-label'>Upload Foto Makanan</div>", unsafe_allow_html=True)
-        uploaded = st.file_uploader(
-            "Pilih atau drag & drop gambar",
-            type=["jpg", "jpeg", "png", "webp"],
-            label_visibility="collapsed"
-        )
+        st.markdown("<div class='ks-section-label'>Foto Makanan</div>", unsafe_allow_html=True)
 
-        if uploaded:
-            upload_id = f"{uploaded.name}-{uploaded.size}"
-            if st.session_state.current_upload_id != upload_id:
-                st.session_state.current_upload_id = upload_id
+        # ── Mode toggle ──
+        col_btn1, col_btn2 = st.columns(2)
+        with col_btn1:
+            if st.button("📁  Upload File", use_container_width=True,
+                         type="primary" if st.session_state.input_mode == "upload" else "secondary"):
+                st.session_state.input_mode = "upload"
                 st.session_state.result = None
+                st.rerun()
+        with col_btn2:
+            if st.button("📷  Foto Langsung", use_container_width=True,
+                         type="primary" if st.session_state.input_mode == "camera" else "secondary"):
+                st.session_state.input_mode = "camera"
+                st.session_state.result = None
+                st.rerun()
 
-            img = Image.open(uploaded)
-            st.image(img, caption="Foto yang kamu upload", use_container_width=True)
-            analyze_btn = st.button("🔍 Analisis Sekarang", use_container_width=True, type="primary")
+        img = None
+
+        # ── Upload mode ──
+        if st.session_state.input_mode == "upload":
+            uploaded = st.file_uploader(
+                "Pilih atau drag & drop gambar",
+                type=["jpg", "jpeg", "png", "webp"],
+                label_visibility="collapsed"
+            )
+            if uploaded:
+                upload_id = f"{uploaded.name}-{uploaded.size}"
+                if st.session_state.current_upload_id != upload_id:
+                    st.session_state.current_upload_id = upload_id
+                    st.session_state.result = None
+                img = Image.open(uploaded)
+                st.image(img, caption="Foto yang kamu upload", use_container_width=True)
+            else:
+                st.markdown("""
+                <div class='ks-empty' style='border: 2px dashed #86efac; border-radius: 18px; background: rgba(240,253,244,0.5);'>
+                    <div class='ks-empty-icon'>📁</div>
+                    <div class='ks-empty-title'>Upload foto makananmu</div>
+                    <div class='ks-empty-sub'>Format: JPG, PNG, WEBP</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+        # ── Camera mode ──
         else:
-            st.markdown("""
-            <div class='ks-empty' style='border: 2px dashed #86efac; border-radius: 18px; background: rgba(240,253,244,0.5);'>
-                <div class='ks-empty-icon'>📷</div>
-                <div class='ks-empty-title'>Upload foto makananmu</div>
-                <div class='ks-empty-sub'>Format: JPG, PNG, WEBP</div>
-            </div>
-            """, unsafe_allow_html=True)
-            analyze_btn = False
+            camera_photo = st.camera_input(
+                "Arahkan kamera ke makanan, lalu tekan tombol capture",
+                label_visibility="collapsed"
+            )
+            if camera_photo:
+                camera_id = str(len(camera_photo.getvalue()))
+                if st.session_state.current_upload_id != f"cam-{camera_id}":
+                    st.session_state.current_upload_id = f"cam-{camera_id}"
+                    st.session_state.result = None
+                img = Image.open(camera_photo)
+            else:
+                st.markdown("""
+                <div class='ks-empty' style='margin-top:0.5rem; padding: 1rem;'>
+                    <div class='ks-empty-icon'>📷</div>
+                    <div class='ks-empty-title'>Arahkan kamera ke makanan</div>
+                    <div class='ks-empty-sub'>Pastikan pencahayaan cukup untuk hasil terbaik</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+        analyze_btn = st.button("🔍 Analisis Sekarang", use_container_width=True,
+                                type="primary", disabled=(img is None))
 
     with col_result:
         st.markdown("<div class='ks-section-label'>Hasil Analisis</div>", unsafe_allow_html=True)
 
-        if uploaded and analyze_btn:
+        if img and analyze_btn:
             with st.spinner("Menganalisis foto makanan..."):
                 time.sleep(0.4)
                 if not demo_mode:
@@ -724,7 +802,7 @@ with tab1:
             </div>
             """, unsafe_allow_html=True)
 
-        elif uploaded:
+        elif img:
             st.markdown("""
             <div class='ks-empty'>
                 <div class='ks-empty-icon'>👆</div>
